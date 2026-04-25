@@ -1,0 +1,11 @@
+{
+  "floors": {
+    "1F": {
+      "name": "1階",
+      "items": {
+        "item_1": { "id": "item_1", "type": "seat", "name": "A-1", "x": 50, "y": 50, "w": 80, "h": 80, "status": "" }
+      },
+      "nextId": 2
+    }
+  }
+}

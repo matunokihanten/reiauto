@@ -1,0 +1,12 @@
+{
+  "name": "matsunoki-pro",
+  "version": "1.0.0",
+  "description": "松乃木飯店 座席管理システム",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
