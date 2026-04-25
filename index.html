@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,maximum-scale=1.0" />
-<title>松乃木飯店 Pro (Ver. Ultimate 1.1 Real-time)</title>
+<title>松乃木飯店 Pro (Ver. Ultimate 1.2 Real-time)</title>
 <style>
   :root {
     --bg-floor: #d9d9cb;
@@ -175,7 +175,6 @@ const selectionBox = document.getElementById('selectionBox');
 const guideV = document.getElementById('guideV');
 const guideH = document.getElementById('guideH');
 
-// --- リアルタイム通信 (Socket.io) 設定 ---
 function initSocket() {
   socket = io();
   socket.on('dataChanged', (newData) => {
@@ -193,7 +192,6 @@ function autoSave() {
   socket.emit('updateData', state);
 }
 
-// --- 以下、既存の全機能ロジック ---
 const themeBtn = document.getElementById('themeBtn');
 if (localStorage.getItem('matsunoki_theme') === 'dark') document.body.classList.add('dark-mode'), themeBtn.textContent = '☀️';
 themeBtn.onclick = () => { document.body.classList.toggle('dark-mode'); const d = document.body.classList.contains('dark-mode'); themeBtn.textContent = d ? '☀️' : '🌙'; localStorage.setItem('matsunoki_theme', d ? 'dark' : 'light'); };
@@ -258,11 +256,12 @@ function render() {
     if (!isPublicMode) setupDrag(el, it.id); 
     canvas.appendChild(el);
   });
-  // ドッキングコネクタの描画
-  const activeSeats = itemArray.filter(it => it.type === 'seat' && it.status !== '');
-  for (let i = 0; i < activeSeats.length; i++) {
-    for (let j = i + 1; j < activeSeats.length; j++) {
-      const a = activeSeats[i], b = activeSeats[j];
+  
+  // 修正箇所：空席状態でも、席同士が隣接していれば常に🔗マークを表示する
+  const allSeats = itemArray.filter(it => it.type === 'seat');
+  for (let i = 0; i < allSeats.length; i++) {
+    for (let j = i + 1; j < allSeats.length; j++) {
+      const a = allSeats[i], b = allSeats[j];
       let c = null;
       if (a.x === b.x && a.w === b.w && a.y + a.h === b.y) c = { x: a.x + a.w/2-12, y: a.y + a.h-8, w: 24, h: 16 };
       else if (a.x === b.x && a.w === b.w && b.y + b.h === a.y) c = { x: a.x + a.w/2-12, y: b.y + b.h-8, w: 24, h: 16 };
@@ -352,12 +351,21 @@ function setupDrag(el, id) {
   el.addEventListener('pointerdown', onDown);
 }
 
+// 修正箇所：端だけでなく中央揃えのガイドラインも表示されるように復元
 function showGuides(target) {
   let gv = false, gh = false;
   Object.values(state.floors[state.currentFloor].items).forEach(it => {
     if (it.id === target.id) return;
+    const tCx = target.x + target.w / 2, tCy = target.y + target.h / 2;
+    const iCx = it.x + it.w / 2, iCy = it.y + it.h / 2;
+
     if (Math.abs(it.x - target.x) < 2) { guideV.style.left = it.x + 'px'; gv = true; }
+    else if (Math.abs(it.x + it.w - (target.x + target.w)) < 2) { guideV.style.left = (it.x + it.w) + 'px'; gv = true; }
+    else if (Math.abs(iCx - tCx) < 2) { guideV.style.left = iCx + 'px'; gv = true; }
+
     if (Math.abs(it.y - target.y) < 2) { guideH.style.top = it.y + 'px'; gh = true; }
+    else if (Math.abs(it.y + it.h - (target.y + target.h)) < 2) { guideH.style.top = (it.y + it.h) + 'px'; gh = true; }
+    else if (Math.abs(iCy - tCy) < 2) { guideH.style.top = iCy + 'px'; gh = true; }
   });
   guideV.style.display = gv ? 'block' : 'none'; guideH.style.display = gh ? 'block' : 'none';
 }
