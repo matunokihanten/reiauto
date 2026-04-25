@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,maximum-scale=1.0" />
-<title>松乃木飯店 Pro (Ver. Ultimate 10.0)</title>
+<title>松乃木飯店 Pro (Ver. Ultimate 10.0 Icon-Resize)</title>
 <style>
   :root {
     --bg-floor: #d9d9cb;
@@ -16,6 +16,7 @@
     --header-bg: #1f2937;
     --text-main: #111;
   }
+
   body.dark-mode {
     --bg-floor: #2d3748;
     --seat-gray: #4a5568;
@@ -25,122 +26,527 @@
     background-color: #111827;
     color: #e5e7eb;
   }
+
   html, body {
     margin: 0; padding: 0; width: 100vw; height: 100dvh;
     overflow: hidden; overscroll-behavior: none;
     font-family: sans-serif;
   }
+
   body { background: #f3f4f6; display: flex; flex-direction: column; transition: background-color 0.3s; }
+
   header { 
     background: var(--header-bg); color: white; padding: 8px 16px; 
     display: flex; justify-content: space-between; align-items: center; 
-    z-index: 2000; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    z-index: 2000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); transition: background-color 0.3s;
   }
+  .app-title { font-weight: 800; font-size: 1.1rem; color: #fbbf24; }
   .toolbar { display: flex; gap: 8px; align-items: center; }
-  .floor-btn-group { display: flex; background: #111827; padding: 3px; border-radius: 8px; gap: 2px; }
-  .floor-btn { background: transparent; color: #9ca3af; padding: 4px 12px; font-size: 13px; border: none; cursor: pointer; }
-  .floor-btn.active { background: #374151; color: white; border-radius: 5px; }
-  #canvasContainer { flex: 1; overflow: hidden; background: #9ca3af; position: relative; display: flex; align-items: center; justify-content: center; touch-action: none; }
-  #floorCanvas { position: relative; width: 1200px; height: 800px; background-color: var(--bg-floor); box-shadow: 0 10px 50px rgba(0,0,0,0.4); }
-  .item { position: absolute; box-sizing: border-box; cursor: move; touch-action: none; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: bold; border: 2px solid #666; }
-  .seat { background: var(--seat-gray); }
-  .occupied { background: var(--success) !important; color: white; }
-  .waiting { background: #f59e0b !important; color: white; }
-  .reserved { background: #3b82f6 !important; color: white; }
-  .wall { background: var(--wall-color); border: none; }
-  .sidebar { width: 280px; background: white; border-left: 1px solid #ddd; padding: 20px; z-index: 100; overflow-y: auto; }
-  button { padding: 8px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
+  .save-status { font-size: 12px; color: #9ca3af; min-width: 80px; }
+
+  button { 
+    padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; 
+    font-weight: bold; transition: all 0.2s; background: #374151; color: #d1d5db; 
+  }
+  button:hover { background: #4b5563; color: white; }
+  .btn-active { background: #fbbf24 !important; color: #1f2937 !important; }
+  
   .add-seat { background: var(--success); color: white; }
+  .add-wall { background: var(--wall-color); color: white; }
+  .reset-layout { background: #6366f1; color: white; }
+
+  .floor-btn-group { display: flex; background: #111827; padding: 3px; border-radius: 8px; gap: 2px; margin: 0 10px; }
+  .floor-btn { background: transparent; color: #9ca3af; padding: 4px 12px; font-size: 13px; border-radius: 5px; }
+  .floor-btn.active { background: #374151; color: white; }
+
+  .floor-name-input { 
+    background: #374151; border: 1px solid #4b5563; color: white; 
+    padding: 6px 10px; border-radius: 6px; width: 100px; font-size: 13px;
+  }
+
+  .main { display: flex; flex: 1; overflow: hidden; position: relative; }
+
+  #canvasContainer { 
+    flex: 1; overflow: hidden; background: #9ca3af; position: relative; 
+    touch-action: none; display: flex; align-items: center; justify-content: center;
+  }
+  body.dark-mode #canvasContainer { background: #1f2937; }
+  
+  #floorCanvas { 
+    position: relative; width: 1200px; height: 800px; 
+    background-color: var(--bg-floor);
+    background-image: linear-gradient(0deg, rgba(0,0,0,0.05) 50%, transparent 50%);
+    background-size: 100% 40px; 
+    box-shadow: 0 10px 50px rgba(0,0,0,0.4);
+    flex-shrink: 0; transition: background-color 0.3s;
+  }
+
+  .item { 
+    position: absolute; box-sizing: border-box; cursor: move; touch-action: none; user-select: none; 
+    transition: transform 0.1s, box-shadow 0.1s, left 0.3s ease, top 0.3s ease;
+  }
+  .item-dragging { transform: scale(1.04); box-shadow: 0 15px 30px rgba(0,0,0,0.3) !important; z-index: 1000 !important; transition: none !important; }
+  .item-selected { outline: 3px solid var(--accent); outline-offset: 2px; z-index: 50 !important; }
+
+  .seat {
+    background: var(--seat-gray); border: 2px solid #666; border-bottom-width: 4px; border-right-width: 4px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 6px;
+    color: var(--text-main); transition: background-color 0.3s, color 0.3s, border-color 0.3s;
+  }
+  
+  .item-name { pointer-events: none; font-weight: bold; }
+  .time-display { font-size: 13px; margin-top: 4px; font-weight: normal; opacity: 0.8; }
+  .memo-display { font-size: 11px; background: rgba(0,0,0,0.1); width: 90%; margin-top: 2px; text-align: center; border-radius: 2px; }
+
+  .reserved { background: #3b82f6 !important; color: white !important; border-color: #1d4ed8; }
+  .occupied { background: var(--success) !important; color: white !important; border-color: #15803d; }
+  .waiting { background: #f59e0b !important; color: white !important; border-color: #b45309; }
+  .wall { background: var(--wall-color); border-radius: 2px; }
+
+  .icon-item { display: flex; align-items: center; justify-content: center; overflow: visible; }
+  .icon-emoji { pointer-events: none; line-height: 1; }
+
+  .resizer { width: 18px; height: 18px; background: var(--accent); position: absolute; right: -9px; bottom: -9px; cursor: nwse-resize; display: none; border-radius: 50%; border: 3px solid white; }
+  .item-selected .resizer { display: block; }
+
+  .dock-connector {
+    position: absolute; background: #555; pointer-events: none; z-index: 15;
+    display: flex; align-items: center; justify-content: center;
+    color: #ffd700; font-size: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  }
+  .dock-connector::after { content: '🔗'; }
+
+  #selectionBox { position: absolute; border: 1px solid var(--accent); background: var(--accent-light); pointer-events: none; z-index: 2000; display: none; }
+  .guide { position: absolute; background-color: var(--accent); z-index: 1500; pointer-events: none; display: none; }
+  .guide-v { width: 1px; height: 100%; }
+  .guide-h { height: 1px; width: 100%; }
+
+  .sidebar { width: 280px; background: white; border-left: 1px solid #e5e7eb; padding: 20px; display: flex; flex-direction: column; z-index: 100; overflow-y: auto; box-sizing: border-box; transition: background-color 0.3s, border-color 0.3s; }
+  body.dark-mode .sidebar { background: #1f2937; border-left-color: #374151; }
+  
+  h3 { margin-top: 0; font-size: 1rem; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px; }
+  label { font-size: 12px; font-weight: bold; color: #6b7280; display: block; margin-top: 15px; }
+  input[type="text"], input[type="number"] { width: 100%; padding: 8px; margin-top: 5px; border: 1px solid #d1d5db; border-radius: 6px; box-sizing: border-box; }
+  
+  .danger-btn { background: var(--danger); color: white; margin-top: 20px; width: 100%; padding: 10px; font-weight: bold; border-radius: 6px; }
+  .action-btn { background: var(--accent); color: white; margin-top: 10px; width: 100%; padding: 12px; font-weight: bold; border-radius: 6px; display: flex; align-items: center; justify-content: center; gap: 8px; }
+  .action-btn.secondary { background: #6b7280; }
+
+  .history-toolbar { display: flex; gap: 5px; margin-bottom: 15px; }
+  .history-btn { flex: 1; padding: 8px; font-size: 12px; background: #e5e7eb; color: #374151; border-radius: 4px; }
+  .history-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+
+  #iconModal {
+    display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(0,0,0,0.7); z-index: 4000; align-items: center; justify-content: center; backdrop-filter: blur(4px);
+  }
+  .modal-content { background: white; padding: 24px; border-radius: 12px; width: 350px; }
+  .icon-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0; }
+  .icon-option { font-size: 32px; padding: 12px; cursor: pointer; border: 1px solid #eee; border-radius: 8px; text-align: center; }
+
+  body.mode-manage .sidebar { display: none; }
+  body.mode-manage.sidebar-open .sidebar { display: flex !important; }
+  body.mode-public .sidebar, body.mode-public .toolbar button:not(#themeBtn) { display: none !important; }
+
+  #publicLegend {
+    display: none; position: absolute; bottom: 20px; left: 20px; background: rgba(255,255,255,0.9);
+    padding: 12px 20px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    z-index: 1000; gap: 20px; align-items: center;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: bold; }
+  .legend-color { width: 18px; height: 18px; border-radius: 4px; border: 1px solid rgba(0,0,0,0.2); }
+
+  @media (max-width: 1024px) { .sidebar { width: 220px; } .app-title { display: none; } }
 </style>
 </head>
-<body>
+<body class="mode-manage">
+
 <header>
-  <div style="font-weight:bold; color:#fbbf24;">MATSUNOKI PRO</div>
+  <div class="app-title" id="mainTitle">MATSUNOKI PRO</div>
   <div class="toolbar">
+    <div id="saveStatus" class="save-status">同期済み</div>
+    <button id="themeBtn">🌙</button>
+    <button id="fullscreenBtn">🔲 全画面</button>
     <div id="floorBtnArea" class="floor-btn-group"></div>
+    <input type="text" id="floorNameEdit" class="floor-name-input" style="display:none;" placeholder="フロア名">
+    <button id="refreshBtn">🔄 更新</button>
+    <button id="resetLayoutBtn" class="reset-layout">🏠 配置リセット</button>
     <button id="modeBtn">📊 監理モード</button>
-    <button id="saveBtn" style="display:none; background:#16a34a; color:white;">💾 レイアウト保存</button>
+    <button id="addSeatBtn" class="add-seat" style="display:none;">+ 席</button>
+    <button id="addWallBtn" class="add-wall" style="display:none;">+ 壁</button>
+    <button id="addIconBtn" style="display:none;">🎨 アイコン</button>
+    <button id="saveBtn" style="display:none;">💾 保存</button>
   </div>
 </header>
+
 <div class="main">
-  <div id="canvasContainer"><div id="floorCanvas"></div></div>
-  <div class="sidebar">
-    <div id="editArea" style="display:none;">
-      <h3>パーツ編集</h3>
-      <input type="text" id="propName" style="width:100%; padding:8px; margin-bottom:10px;">
-      <button id="delBtn" style="background:red; color:white; width:100%;">削除</button>
+  <div id="canvasContainer">
+    <div id="guideV" class="guide guide-v"></div>
+    <div id="guideH" class="guide guide-h"></div>
+    <div id="selectionBox"></div>
+    <div id="floorCanvas"></div>
+    <div id="publicLegend">
+       <div class="legend-item"><div class="legend-color" style="background:var(--seat-gray);"></div>空席</div>
+       <div class="legend-item"><div class="legend-color" style="background:var(--success);"></div>使用中</div>
+       <div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div>まもなく空き</div>
+       <div class="legend-item"><div class="legend-color" style="background:#3b82f6;"></div>予約済</div>
     </div>
-    <div id="hint">監理モード: 席タップで状態切替</div>
+  </div>
+
+  <div class="sidebar">
+    <div id="settingsArea">
+      <div class="history-toolbar" id="historyGroup" style="display:none">
+        <button id="undoBtn" class="history-btn">↩️ 戻す</button>
+        <button id="redoBtn" class="history-btn">↪️ 進む</button>
+      </div>
+      <div id="actionGroup" style="display:none; margin-bottom: 20px;">
+        <h3>団体席操作</h3>
+        <button id="dockBtn" class="action-btn">🔗 選択席をドッキング</button>
+        <button id="undockBtn" class="action-btn secondary">🔓 連結解除</button>
+      </div>
+      <div id="editGroup" style="display:none">
+        <h3>パーツ編集</h3>
+        <div id="propPanel">
+          <label>ラベル / 席番号</label>
+          <input type="text" id="propName">
+          <div id="propMemoArea" style="display:none;"><label style="margin-top:10px;">予約メモ</label><input type="text" id="propMemo"></div>
+          <label style="margin-top:10px;">警告タイマー (分)</label><input type="number" id="propWarningTime">
+          <button id="delBtn" class="danger-btn">削除</button>
+        </div>
+      </div>
+      <div id="noSelect" style="color:#9ca3af; text-align:center; margin-top:30px;">背景ドラッグで<br>複数の席を囲めます</div>
+      <div id="clearSeatsArea" style="margin-top:auto; display:none;"><button id="clearSeatsBtn" style="width:100%; background:#6b7280; color:white; padding:10px; border-radius:6px; font-size:12px;">🚨 全席空席リセット</button></div>
+    </div>
+    <div id="hintArea" style="font-size:11px; color:#9ca3af; margin-top:20px;"></div>
+    <button id="publicLinkBtn" style="width:100%; background:#3b82f6; color:white; padding:12px; border-radius:6px; font-size:13px; margin-top:auto; font-weight:bold; border:none; cursor:pointer;">🔗 外部公開ページ</button>
   </div>
 </div>
+
+<div id="iconModal">
+  <div class="modal-content">
+    <h3>アイコンを選択</h3>
+    <div class="icon-grid" id="iconGrid"></div>
+    <button onclick="closeIconModal()" style="width:100%; padding:10px; border-radius:6px;">キャンセル</button>
+  </div>
+</div>
+
 <script>
-let state = { isEditMode: false, currentFloor: '1F', floors: {} };
+const urlParams = new URLSearchParams(window.location.search);
+const isPublicMode = urlParams.get('public') === 'true';
+
+let state = {
+  isEditMode: false,
+  currentFloor: '1F',
+  floors: {
+    '1F': { name: '1階', items: {}, nextId: 1 },
+    '2F': { name: '2階', items: {}, nextId: 1 },
+    '3F': { name: '3階', items: {}, nextId: 1 }
+  },
+  selectedIds: [], history: [], historyIndex: -1
+};
+
+const iconSets = ["🌿","🍀","🌵","🌴","🌲","🌳","🎋","🌸","🌼","🌻","🍁","🍃","🪑","🛋️","🪟","💡","🚪","🚻","💰","🍳","🍴","🍵","🍶","🚭","📶","🚲"];
+let currentScale = 1, isSaving = false;
+
 const canvas = document.getElementById('floorCanvas');
+const container = document.getElementById('canvasContainer');
+const floorBtnArea = document.getElementById('floorBtnArea');
+const floorNameEdit = document.getElementById('floorNameEdit');
+const saveStatus = document.getElementById('saveStatus');
+const selectionBox = document.getElementById('selectionBox');
+const guideV = document.getElementById('guideV');
+const guideH = document.getElementById('guideH');
+
+const themeBtn = document.getElementById('themeBtn');
+if (localStorage.getItem('matsunoki_theme') === 'dark') document.body.classList.add('dark-mode'), themeBtn.textContent = '☀️';
+themeBtn.onclick = () => { document.body.classList.toggle('dark-mode'); const d = document.body.classList.contains('dark-mode'); themeBtn.textContent = d ? '☀️' : '🌙'; localStorage.setItem('matsunoki_theme', d ? 'dark' : 'light'); };
+
+function pushHistory() { if(isPublicMode) return; if (state.historyIndex < state.history.length - 1) state.history = state.history.slice(0, state.historyIndex + 1); state.history.push(JSON.parse(JSON.stringify(state.floors))); if (state.history.length > 30) state.history.shift(); state.historyIndex = state.history.length - 1; updateHistoryButtons(); }
+function undo() { if (state.historyIndex > 0) { state.historyIndex--; state.floors = JSON.parse(JSON.stringify(state.history[state.historyIndex])); render(); updateHistoryButtons(); autoSave(); } }
+function redo() { if (state.historyIndex < state.history.length - 1) { state.historyIndex++; state.floors = JSON.parse(JSON.stringify(state.history[state.historyIndex])); render(); updateHistoryButtons(); autoSave(); } }
+function updateHistoryButtons() { const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn'); if(u) u.disabled = state.historyIndex <= 0; if(r) r.disabled = state.historyIndex >= state.history.length - 1; }
+
+async function autoSave(show = false) { if(isPublicMode) return; isSaving = true; saveStatus.textContent = '保存中...'; try { const res = await fetch('save.php', { method: 'POST', body: JSON.stringify(state) }); if (res.ok) { saveStatus.textContent = '同期済み'; if (show) alert('保存完了'); } } catch (e) { saveStatus.textContent = '通信エラー'; } setTimeout(() => isSaving = false, 800); }
+
+// この部分が削除されていました！これで他の端末のデータが3秒ごとに同期されます
+async function syncFromServer() { 
+  if (isSaving || state.selectedIds.length > 0 || state.isEditMode) return; 
+  try { 
+    const res = await fetch('layout.json?t=' + Date.now()); 
+    if (res.ok) { 
+      const data = await res.json(); 
+      if (JSON.stringify(state.floors) !== JSON.stringify(data.floors)) { 
+        state.floors = data.floors; 
+        if (state.history.length === 0) pushHistory(); 
+        updateFloorButtons(); 
+        render(); 
+      } 
+    } 
+  } catch (e) {} 
+}
+setInterval(syncFromServer, 3000);
 
 async function init() {
-  const res = await fetch('layout.json');
-  if (res.ok) {
-    const data = await res.json();
-    state.floors = data.floors;
-    updateFloorButtons();
-    render();
-  }
+  try { const res = await fetch('layout.json?t=' + Date.now()); if (res.ok) { const data = await res.json(); if (data.floors) state.floors = data.floors; } } catch (e) {}
+  pushHistory();
+  const ig = document.getElementById('iconGrid'); iconSets.forEach(icon => { const d = document.createElement('div'); d.className = 'icon-option'; d.textContent = icon; d.onclick = () => { addItem('icon-item', '', 60, 60, icon); closeIconModal(); }; ig.appendChild(d); });
+  if(isPublicMode) { document.getElementById('mainTitle').textContent = '松乃木飯店 - 空席状況'; document.getElementById('publicLegend').style.display = 'flex'; }
+  updateToolbarVisibility(); updateFloorButtons(); render();
+  window.addEventListener('resize', resizeCanvas); setTimeout(resizeCanvas, 100);
 }
 
-async function save() {
-  await fetch('save.php', { method: 'POST', body: JSON.stringify(state) });
+function updateToolbarVisibility() {
+  if (isPublicMode) { document.body.className = "mode-public"; return; }
+  const d = state.isEditMode ? 'inline-block' : 'none';
+  ['addSeatBtn','addWallBtn','addIconBtn','saveBtn','floorNameEdit','historyGroup','editGroup','clearSeatsArea'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = d; });
+  document.getElementById('resetLayoutBtn').style.display = (!state.isEditMode && !isPublicMode) ? 'inline-block' : 'none';
+  document.getElementById('hintArea').innerHTML = state.isEditMode ? "<b>一括選択:</b> 背景ドラッグ<br><b>移動:</b> 10pxグリッド吸着" : "<b>監理:</b> 席タップで状態切替<br>席ドラッグで連結可";
+  document.body.className = state.isEditMode ? "" : "mode-manage";
 }
 
 function updateFloorButtons() {
-  const area = document.getElementById('floorBtnArea');
-  area.innerHTML = '';
+  floorBtnArea.innerHTML = '';
   Object.keys(state.floors).forEach(id => {
-    const b = document.createElement('button');
-    b.className = `floor-btn ${state.currentFloor === id ? 'active' : ''}`;
-    b.textContent = state.floors[id].name;
-    b.onclick = () => { state.currentFloor = id; updateFloorButtons(); render(); };
-    area.appendChild(b);
+    const b = document.createElement('button'); b.className = `floor-btn ${state.currentFloor === id ? 'active' : ''}`;
+    b.textContent = state.floors[id].name || id;
+    b.onclick = () => { state.currentFloor = id; state.selectedIds = []; render(); updateFloorButtons(); if(state.isEditMode) floorNameEdit.value = state.floors[id].name; };
+    floorBtnArea.appendChild(b);
   });
+}
+
+function resizeCanvas() {
+  const scale = Math.min((container.clientWidth - 40) / 1200, (container.clientHeight - 40) / 800);
+  currentScale = scale > 1 ? 1 : scale;
+  canvas.style.transform = `scale(${currentScale})`;
 }
 
 function render() {
   canvas.innerHTML = '';
   const items = state.floors[state.currentFloor].items;
-  Object.values(items).forEach(it => {
+  const itemArray = Object.values(items);
+  itemArray.forEach(it => {
     const el = document.createElement('div');
-    el.className = `item ${it.type} ${it.status || ''}`;
-    el.style.cssText = `left:${it.x}px; top:${it.y}px; width:${it.w}px; height:${it.h}px;`;
-    el.textContent = it.name;
-    el.onclick = () => { if(!state.isEditMode && it.type==='seat') toggleSeat(it.id); };
-    if(state.isEditMode) setupDrag(el, it);
+    el.id = it.id;
+    el.className = `item ${it.type} ${it.status || ''} ${state.selectedIds.includes(it.id) ? 'item-selected' : ''}`;
+    el.style.cssText = `left:${it.x}px; top:${it.y}px; width:${it.w}px; height:${it.h}px; z-index:${it.type==='wall'?10:20};`;
+    
+    if (it.type === 'icon-item') {
+      const emoji = document.createElement('span');
+      emoji.className = 'icon-emoji';
+      emoji.textContent = it.name || '';
+      emoji.style.fontSize = (Math.min(it.w, it.h) * 0.8) + 'px';
+      el.appendChild(emoji);
+    } else if (it.type !== 'wall') {
+      const n = document.createElement('span'); n.className = 'item-name'; n.textContent = it.name || ''; el.appendChild(n);
+    }
+
+    if (it.type === 'seat') {
+      if (it.status === 'reserved' && it.memo && !isPublicMode) { const m = document.createElement('div'); m.className = 'memo-display'; m.textContent = it.memo; el.appendChild(m); }
+      const t = document.createElement('span'); t.className = 'time-display'; el.appendChild(t);
+    }
+    
+    if (state.isEditMode) {
+      const r = document.createElement('div'); r.className = 'resizer'; el.appendChild(r);
+    }
+
+    if (!isPublicMode) setupDrag(el, it.id, null); 
     canvas.appendChild(el);
   });
+  const activeSeats = itemArray.filter(it => it.type === 'seat' && it.status !== '');
+  for (let i = 0; i < activeSeats.length; i++) {
+    for (let j = i + 1; j < activeSeats.length; j++) {
+      const a = activeSeats[i], b = activeSeats[j];
+      let c = null;
+      if (a.x === b.x && a.w === b.w && a.y + a.h === b.y) c = { x: a.x + a.w/2-12, y: a.y + a.h-8, w: 24, h: 16 };
+      else if (a.x === b.x && a.w === b.w && b.y + b.h === a.y) c = { x: a.x + a.w/2-12, y: b.y + b.h-8, w: 24, h: 16 };
+      else if (a.y === b.y && a.h === b.h && a.x + a.w === b.x) c = { x: a.x + a.w-8, y: a.y + a.h/2-12, w: 16, h: 24 };
+      else if (a.y === b.y && a.h === b.h && b.x + b.w === a.x) c = { x: b.x + b.w-8, y: a.y + a.h/2-12, w: 16, h: 24 };
+      if (c) { const d = document.createElement('div'); d.className = 'dock-connector'; d.style.cssText = `left:${c.x}px; top:${c.y}px; width:${c.w}px; height:${c.h}px;`; canvas.appendChild(d); }
+    }
+  }
+}
+
+document.getElementById('resetLayoutBtn').onclick = () => {
+  if(!confirm('全ての席を元の定位置に戻しますか？')) return;
+  Object.values(state.floors[state.currentFloor].items).forEach(it => { if(it.homeX !== undefined) it.x = it.homeX, it.y = it.homeY; });
+  render(); autoSave();
+};
+
+function selectItems(ids) {
+  if(isPublicMode) return;
+  state.selectedIds = ids;
+  const isSingle = ids.length === 1, isMultiple = ids.length > 1;
+  document.body.classList.toggle('sidebar-open', ids.length > 0);
+  document.getElementById('noSelect').style.display = ids.length > 0 ? 'none' : 'block';
+  document.getElementById('actionGroup').style.display = isMultiple ? 'block' : 'none';
+  if (state.isEditMode) { document.getElementById('editGroup').style.display = isSingle ? 'block' : 'none'; }
+  else { document.getElementById('editGroup').style.display = 'none'; if(isSingle) document.body.classList.remove('sidebar-open'); }
+  if (isSingle) {
+    const it = state.floors[state.currentFloor].items[ids[0]];
+    document.getElementById('propName').value = it.name || '';
+    document.getElementById('propMemoArea').style.display = (it.type==='seat' && it.status==='reserved') ? 'block' : 'none';
+    document.getElementById('propMemo').value = it.memo || '';
+    document.getElementById('propWarningTime').value = it.warningTime || 20;
+  }
+  render();
+}
+
+document.getElementById('dockBtn').onclick = () => {
+  if (state.selectedIds.length < 2) return;
+  const items = state.floors[state.currentFloor].items;
+  const selectedSeats = state.selectedIds.map(id => items[id]).filter(it => it.type === 'seat');
+  if (selectedSeats.length < 2) return;
+  const minX = Math.min(...selectedSeats.map(s => s.x)), maxX = Math.max(...selectedSeats.map(s => s.x + s.w));
+  const minY = Math.min(...selectedSeats.map(s => s.y)), maxY = Math.max(...selectedSeats.map(s => s.y + s.h));
+  const tW = maxX - minX, tH = maxY - minY;
+  if (tW >= tH) {
+    selectedSeats.sort((a, b) => a.x - b.x);
+    const base = selectedSeats[0]; let nX = base.x + base.w;
+    for (let i = 1; i < selectedSeats.length; i++) { selectedSeats[i].x = nX; selectedSeats[i].y = base.y; nX += selectedSeats[i].w; }
+  } else {
+    selectedSeats.sort((a, b) => a.y - b.y);
+    const base = selectedSeats[0]; let nY = base.y + base.h;
+    for (let i = 1; i < selectedSeats.length; i++) { selectedSeats[i].y = nY; selectedSeats[i].x = base.x; nY += selectedSeats[i].h; }
+  }
+  if (state.isEditMode) pushHistory(); render(); autoSave();
+};
+
+document.getElementById('undockBtn').onclick = () => {
+  const items = state.floors[state.currentFloor].items;
+  state.selectedIds.forEach(id => { const it = items[id]; if (it.homeX !== undefined) it.x = it.homeX, it.y = it.homeY; });
+  if (state.isEditMode) pushHistory(); render(); autoSave();
+};
+
+function setupDrag(el, id, rs) {
+  let isDragging = false, isResizing = false, sx, sy, startPos = new Map(), hasMoved = false;
+  const onDown = (e) => {
+    const it = state.floors[state.currentFloor].items[id];
+    if (!state.isEditMode && it.type !== 'seat') return;
+    e.stopPropagation(); if (state.isEditMode && !state.selectedIds.includes(id)) selectItems([id]);
+    sx = e.clientX; sy = e.clientY; hasMoved = false;
+    if (e.target.classList.contains('resizer') && state.isEditMode) isResizing = true; else isDragging = true;
+    if (state.isEditMode && state.selectedIds.length > 1) {
+        state.selectedIds.forEach(sid => { const sit = state.floors[state.currentFloor].items[sid]; startPos.set(sid, { x: sit.x, y: sit.y, w: sit.w, h: sit.h }); document.getElementById(sid).classList.add('item-dragging'); });
+    } else { startPos.set(id, { x: it.x, y: it.y, w: it.w, h: it.h }); el.classList.add('item-dragging'); }
+    el.setPointerCapture(e.pointerId); el.addEventListener('pointermove', onMove); el.addEventListener('pointerup', onUp);
+  };
+  const onMove = (e) => {
+    const dx = (e.clientX - sx) / currentScale, dy = (e.clientY - sy) / currentScale;
+    if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasMoved = true;
+    const items = state.floors[state.currentFloor].items;
+    if (isResizing) {
+      const it = items[id], s = startPos.get(id);
+      it.w = Math.round(Math.max(20, Math.min(s.w + dx, 1200 - it.x)) / 10) * 10;
+      it.h = Math.round(Math.max(20, Math.min(s.h + dy, 800 - it.y)) / 10) * 10;
+      el.style.width = it.w + 'px'; el.style.height = it.h + 'px';
+      if(it.type === 'icon-item') {
+        const em = el.querySelector('.icon-emoji');
+        if(em) em.style.fontSize = (Math.min(it.w, it.h) * 0.8) + 'px';
+      }
+    } else if (isDragging) {
+      if (state.isEditMode && state.selectedIds.length > 1) {
+          state.selectedIds.forEach(sid => { const sit = items[sid], s = startPos.get(sid); sit.x = Math.max(0, Math.min(Math.round((s.x + dx) / 10) * 10, 1200 - sit.w)); sit.y = Math.max(0, Math.min(Math.round((s.y + dy) / 10) * 10, 800 - sit.h)); const sel = document.getElementById(sid); if(sel) { sel.style.left = sit.x + 'px'; sel.style.top = sit.y + 'px'; } });
+      } else {
+          const it = items[id], s = startPos.get(id); it.x = Math.max(0, Math.min(Math.round((s.x + dx) / 10) * 10, 1200 - it.w)); it.y = Math.max(0, Math.min(Math.round((s.y + dy) / 10) * 10, 800 - it.h)); el.style.left = it.x + 'px'; el.style.top = it.y + 'px';
+          if(state.isEditMode) showGuides(it);
+      }
+    }
+  };
+  const onUp = (e) => {
+    isDragging = isResizing = false; guideV.style.display = guideH.style.display = 'none';
+    document.querySelectorAll('.item-dragging').forEach(t => t.classList.remove('item-dragging'));
+    el.releasePointerCapture(e.pointerId); el.removeEventListener('pointermove', onMove); el.removeEventListener('pointerup', onUp);
+    if (!hasMoved) { if (!state.isEditMode) toggleSeat(id); else selectItems([id]); }
+    else { if (state.isEditMode) pushHistory(); autoSave(); render(); }
+  };
+  el.addEventListener('pointerdown', onDown);
+}
+
+function showGuides(target) {
+  let gv = false, gh = false;
+  Object.values(state.floors[state.currentFloor].items).forEach(it => {
+    if (it.id === target.id) return;
+    if (Math.abs(it.x - target.x) < 2 || Math.abs((it.x + it.w/2) - (target.x + target.w/2)) < 2) { guideV.style.left = (Math.abs(it.x - target.x) < 2 ? it.x : it.x + it.w/2) + 'px'; gv = true; }
+    if (Math.abs(it.y - target.y) < 2 || Math.abs((it.y + it.h/2) - (target.y + target.h/2)) < 2) { guideH.style.top = (Math.abs(it.y - target.y) < 2 ? it.y : it.y + it.h/2) + 'px'; gh = true; }
+  });
+  guideV.style.display = gv ? 'block' : 'none'; guideH.style.display = gh ? 'block' : 'none';
+}
+
+let isSelecting = false, bx, by;
+container.addEventListener('pointerdown', (e) => {
+  if (isPublicMode || (e.target !== container && e.target !== canvas)) return;
+  isSelecting = true; const r = container.getBoundingClientRect(); bx = (e.clientX - r.left); by = (e.clientY - r.top);
+  selectionBox.style.cssText = `display:block; left:${bx}px; top:${by}px; width:0; height:0;`;
+  container.setPointerCapture(e.pointerId);
+});
+container.addEventListener('pointermove', (e) => {
+  if (!isSelecting) return;
+  const r = container.getBoundingClientRect(), cx = (e.clientX - r.left), cy = (e.clientY - r.top);
+  selectionBox.style.left = Math.min(bx, cx) + 'px'; selectionBox.style.top = Math.min(by, cy) + 'px';
+  selectionBox.style.width = Math.abs(cx - bx) + 'px'; selectionBox.style.height = Math.abs(cy - by) + 'px';
+});
+container.addEventListener('pointerup', () => {
+  if (!isSelecting) return; isSelecting = false; const b = selectionBox.getBoundingClientRect(), ids = [];
+  document.querySelectorAll('.item').forEach(el => { const r = el.getBoundingClientRect(); if (!(r.right < b.left || r.left > b.right || r.bottom < b.top || r.top > b.bottom)) ids.push(el.id); });
+  selectionBox.style.display = 'none'; selectItems(ids);
+});
+
+function addItem(type, name, w, h, icon = '') {
+  const f = state.floors[state.currentFloor], id = 'item_' + f.nextId++;
+  f.items[id] = { id, type, name: icon || name, x: 100, y: 100, homeX: 100, homeY: 100, w, h, status: '', warningTime: 20, occupiedSince: null, memo: '' };
+  selectItems([id]); pushHistory(); autoSave();
 }
 
 function toggleSeat(id) {
-  const s = state.floors[state.currentFloor].items[id];
-  const cycle = { '': 'occupied', 'occupied': 'waiting', 'waiting': 'reserved', 'reserved': '' };
+  const s = state.floors[state.currentFloor].items[id], cycle = { '': 'occupied', 'occupied': 'waiting', 'waiting': 'reserved', 'reserved': '' };
   s.status = cycle[s.status || ''];
-  render(); save();
+  s.occupiedSince = (s.status === 'occupied') ? Date.now() : (s.status === '' ? null : s.occupiedSince);
+  render(); autoSave();
 }
 
-function setupDrag(el, it) {
-  let dragging = false;
-  el.onpointerdown = (e) => { dragging = true; el.setPointerCapture(e.pointerId); };
-  el.onpointermove = (e) => {
-    if(!dragging) return;
-    it.x += e.movementX; it.y += e.movementY;
-    el.style.left = it.x + 'px'; el.style.top = it.y + 'px';
-  };
-  el.onpointerup = () => { dragging = false; save(); };
-}
-
-document.getElementById('modeBtn').onclick = (e) => {
-  state.isEditMode = !state.isEditMode;
-  e.target.textContent = state.isEditMode ? '🔨 編集終了' : '📊 監理モード';
-  document.getElementById('editArea').style.display = state.isEditMode ? 'block' : 'none';
-  render();
+document.getElementById('modeBtn').onclick = function() {
+  state.isEditMode = !state.isEditMode; state.selectedIds = []; updateToolbarVisibility();
+  this.textContent = state.isEditMode ? '🔨 編集終了' : '📊 監理モード';
+  this.classList.toggle('btn-active', state.isEditMode);
+  if(state.isEditMode) floorNameEdit.value = state.floors[state.currentFloor].name;
+  document.body.classList.remove('sidebar-open');
+  render(); setTimeout(resizeCanvas, 50);
 };
+
+document.getElementById('addSeatBtn').onclick = () => addItem('seat', '席', 100, 100);
+document.getElementById('addWallBtn').onclick = () => addItem('wall', '', 200, 15);
+document.getElementById('addIconBtn').onclick = () => document.getElementById('iconModal').style.display = 'flex';
+function closeIconModal() { document.getElementById('iconModal').style.display = 'none'; }
+
+document.getElementById('propName').onchange = (e) => { if(state.selectedIds.length===1) { state.floors[state.currentFloor].items[state.selectedIds[0]].name = e.target.value; pushHistory(); render(); autoSave(); } };
+document.getElementById('propMemo').onchange = (e) => { if(state.selectedIds.length===1) { state.floors[state.currentFloor].items[state.selectedIds[0]].memo = e.target.value; render(); } };
+document.getElementById('propWarningTime').onchange = (e) => { if(state.selectedIds.length===1) { state.floors[state.currentFloor].items[state.selectedIds[0]].warningTime = parseInt(e.target.value)||20; pushHistory(); autoSave(); } };
+document.getElementById('delBtn').onclick = () => { if(state.selectedIds.length>0 && confirm('削除しますか？')){ state.selectedIds.forEach(id => delete state.floors[state.currentFloor].items[id]); state.selectedIds=[]; pushHistory(); render(); autoSave(); } };
+document.getElementById('clearSeatsBtn').onclick = () => { if(confirm('全席リセットしますか？')){ Object.values(state.floors[state.currentFloor].items).forEach(it => {if(it.type==='seat'){it.status='';it.occupiedSince=null;}}); render(); autoSave(); } };
+document.getElementById('saveBtn').onclick = () => { Object.values(state.floors[state.currentFloor].items).forEach(it => { it.homeX = it.x; it.homeY = it.y; }); autoSave(true); };
+document.getElementById('refreshBtn').onclick = async () => { await init(); alert('更新完了'); };
+document.getElementById('fullscreenBtn').onclick = () => { if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); };
+document.getElementById('undoBtn').onclick = undo; document.getElementById('redoBtn').onclick = redo;
+floorNameEdit.onchange = (e) => { state.floors[state.currentFloor].name = e.target.value; updateFloorButtons(); pushHistory(); autoSave(); };
+document.getElementById('publicLinkBtn').onclick = () => window.open(window.location.href.split('?')[0] + "?public=true", '_blank');
+
+window.addEventListener('keydown', (e) => { if (state.isEditMode) { if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); } } });
+
+setInterval(() => {
+  const now = Date.now();
+  Object.keys(state.floors).forEach(fId => {
+    Object.values(state.floors[fId].items).forEach(it => {
+      if (it.type === 'seat' && (it.status === 'occupied' || it.status === 'waiting')) {
+        const elapsed = now - it.occupiedSince;
+        if (it.status === 'occupied' && elapsed >= (it.warningTime || 20)*60000) it.status = 'waiting';
+        if (fId === state.currentFloor) {
+          const el = document.getElementById(it.id);
+          if (el) { const ts = el.querySelector('.time-display'); if (ts) ts.textContent = `${Math.floor(elapsed/60000)}分${Math.floor((elapsed%60000)/1000).toString().padStart(2,'0')}秒`; }
+        }
+      }
+    });
+  });
+}, 1000);
 
 init();
 </script>

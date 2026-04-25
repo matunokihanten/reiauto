@@ -2,13 +2,12 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-// Render環境のポート、またはローカルの3000番を使用
 const PORT = process.env.PORT || 3000;
 
 const server = http.createServer((req, res) => {
     const urlPath = req.url.split('?')[0];
 
-    // 保存処理 (save.php への POST)
+    // 保存処理
     if (req.method === 'POST' && urlPath === '/save.php') {
         let body = '';
         req.on('data', chunk => { body += chunk.toString(); });
@@ -27,7 +26,7 @@ const server = http.createServer((req, res) => {
         return;
     }
 
-    // 静的なファイルの配信
+    // 静的ファイルの配信
     let filePath = path.join(__dirname, urlPath === '/' ? 'index.html' : urlPath);
     const extname = path.extname(filePath);
     const mimeTypes = {
@@ -45,6 +44,7 @@ const server = http.createServer((req, res) => {
         } else {
             res.writeHead(200, { 
                 'Content-Type': contentType,
+                // ブラウザが古いJSONを読み込まないようにキャッシュを無効化
                 'Cache-Control': 'no-store, no-cache, must-revalidate, private' 
             });
             res.end(content, 'utf-8');
@@ -52,7 +52,6 @@ const server = http.createServer((req, res) => {
     });
 });
 
-// '0.0.0.0' を指定することで、Renderの外部ネットワークからの接続を許可します
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running at http://0.0.0.0:${PORT}`);
 });
