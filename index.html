@@ -1,76 +1,117 @@
-!DOCTYPE html
-html lang=ja
-head
-meta charset=utf-8 
-meta name=viewport content=width=device-width,initial-scale=1.0,user-scalable=no 
-title松乃木飯店 Protitle
-style
-  root { --bg-floor #d9d9cb; --wall-color #800000; --seat-gray #e0e0e0; --accent #2563eb; --header-bg #1f2937; }
-  body { margin 0; padding 0; font-family sans-serif; background #f3f4f6; display flex; flex-direction column; height 100vh; overflow hidden; }
-  header { background var(--header-bg); color white; padding 8px 16px; display flex; justify-content space-between; align-items center; z-index 2000; }
-  .toolbar { display flex; gap 8px; }
-  .main { display flex; flex 1; overflow hidden; position relative; }
-  #canvasContainer { flex 1; overflow hidden; background #9ca3af; position relative; display flex; align-items center; justify-content center; }
-  #floorCanvas { position relative; width 1200px; height 800px; background-color var(--bg-floor); box-shadow 0 10px 50px rgba(0,0,0,0.4); }
-  .item { position absolute; box-sizing border-box; cursor move; border 2px solid #666; display flex; align-items center; justify-content center; border-radius 6px; font-weight bold; }
-  .seat { background var(--seat-gray); }
-  .occupied { background #16a34a !important; color white; }
-  .waiting { background #f59e0b !important; color white; }
-  .reserved { background #3b82f6 !important; color white; }
-  .wall { background var(--wall-color); border none; }
-  .sidebar { width 280px; background white; border-left 1px solid #ddd; padding 20px; display flex; flex-direction column; }
-  button { padding 8px 12px; cursor pointer; border-radius 4px; border none; background #374151; color white; }
-  .btn-active { background #fbbf24 !important; color #000 !important; }
-style
-head
-body
-header
-  div松乃木飯店 Prodiv
-  div class=toolbar
-    span id=saveStatus同期済みspan
-    button id=modeBtn📊 監理モードbutton
-    button id=saveBtn style=displaynone; background#16a34a;💾 レイアウト保存button
-  div
-header
-div class=main
-  div id=canvasContainerdiv id=floorCanvasdivdiv
-  div class=sidebar
-    div id=editPanel style=displaynone;
-      h3パーツ編集h3
-      input type=text id=itName placeholder=名前
-      button id=delBtn style=background#dc2626; width100%; margin-top10px;削除button
-    div
-    div id=hint監理モード 席タップで状態変更div
-  div
-div
-script
-let state = { isEditMode false, currentFloor '1F', floors { '1F' { name '1階', items {}, nextId 1 } } };
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,maximum-scale=1.0" />
+<title>松乃木飯店 Pro (Ver. Ultimate 10.0)</title>
+<style>
+  :root {
+    --bg-floor: #d9d9cb;
+    --wall-color: #800000;
+    --seat-gray: #e0e0e0;
+    --accent: #2563eb;
+    --accent-light: rgba(37, 99, 235, 0.15);
+    --danger: #dc2626;
+    --success: #16a34a;
+    --header-bg: #1f2937;
+    --text-main: #111;
+  }
+  body.dark-mode {
+    --bg-floor: #2d3748;
+    --seat-gray: #4a5568;
+    --wall-color: #9b1c1c; 
+    --header-bg: #030712;
+    --text-main: #f3f4f6;
+    background-color: #111827;
+    color: #e5e7eb;
+  }
+  html, body {
+    margin: 0; padding: 0; width: 100vw; height: 100dvh;
+    overflow: hidden; overscroll-behavior: none;
+    font-family: sans-serif;
+  }
+  body { background: #f3f4f6; display: flex; flex-direction: column; transition: background-color 0.3s; }
+  header { 
+    background: var(--header-bg); color: white; padding: 8px 16px; 
+    display: flex; justify-content: space-between; align-items: center; 
+    z-index: 2000; box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  }
+  .toolbar { display: flex; gap: 8px; align-items: center; }
+  .floor-btn-group { display: flex; background: #111827; padding: 3px; border-radius: 8px; gap: 2px; }
+  .floor-btn { background: transparent; color: #9ca3af; padding: 4px 12px; font-size: 13px; border: none; cursor: pointer; }
+  .floor-btn.active { background: #374151; color: white; border-radius: 5px; }
+  #canvasContainer { flex: 1; overflow: hidden; background: #9ca3af; position: relative; display: flex; align-items: center; justify-content: center; touch-action: none; }
+  #floorCanvas { position: relative; width: 1200px; height: 800px; background-color: var(--bg-floor); box-shadow: 0 10px 50px rgba(0,0,0,0.4); }
+  .item { position: absolute; box-sizing: border-box; cursor: move; touch-action: none; display: flex; align-items: center; justify-content: center; border-radius: 6px; font-weight: bold; border: 2px solid #666; }
+  .seat { background: var(--seat-gray); }
+  .occupied { background: var(--success) !important; color: white; }
+  .waiting { background: #f59e0b !important; color: white; }
+  .reserved { background: #3b82f6 !important; color: white; }
+  .wall { background: var(--wall-color); border: none; }
+  .sidebar { width: 280px; background: white; border-left: 1px solid #ddd; padding: 20px; z-index: 100; overflow-y: auto; }
+  button { padding: 8px 12px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; }
+  .add-seat { background: var(--success); color: white; }
+</style>
+</head>
+<body>
+<header>
+  <div style="font-weight:bold; color:#fbbf24;">MATSUNOKI PRO</div>
+  <div class="toolbar">
+    <div id="floorBtnArea" class="floor-btn-group"></div>
+    <button id="modeBtn">📊 監理モード</button>
+    <button id="saveBtn" style="display:none; background:#16a34a; color:white;">💾 レイアウト保存</button>
+  </div>
+</header>
+<div class="main">
+  <div id="canvasContainer"><div id="floorCanvas"></div></div>
+  <div class="sidebar">
+    <div id="editArea" style="display:none;">
+      <h3>パーツ編集</h3>
+      <input type="text" id="propName" style="width:100%; padding:8px; margin-bottom:10px;">
+      <button id="delBtn" style="background:red; color:white; width:100%;">削除</button>
+    </div>
+    <div id="hint">監理モード: 席タップで状態切替</div>
+  </div>
+</div>
+<script>
+let state = { isEditMode: false, currentFloor: '1F', floors: {} };
 const canvas = document.getElementById('floorCanvas');
 
-async function load() {
-  try {
-    const res = await fetch('layout.json');
-    if (res.ok) { const d = await res.json(); state.floors = d.floors; render(); }
-  } catch (e) { console.error(Load error); }
+async function init() {
+  const res = await fetch('layout.json');
+  if (res.ok) {
+    const data = await res.json();
+    state.floors = data.floors;
+    updateFloorButtons();
+    render();
+  }
 }
 
 async function save() {
-  document.getElementById('saveStatus').textContent = '保存中...';
-  try {
-    await fetch('save.php', { method 'POST', body JSON.stringify(state) });
-    document.getElementById('saveStatus').textContent = '同期済み';
-  } catch (e) { document.getElementById('saveStatus').textContent = 'エラー'; }
+  await fetch('save.php', { method: 'POST', body: JSON.stringify(state) });
+}
+
+function updateFloorButtons() {
+  const area = document.getElementById('floorBtnArea');
+  area.innerHTML = '';
+  Object.keys(state.floors).forEach(id => {
+    const b = document.createElement('button');
+    b.className = `floor-btn ${state.currentFloor === id ? 'active' : ''}`;
+    b.textContent = state.floors[id].name;
+    b.onclick = () => { state.currentFloor = id; updateFloorButtons(); render(); };
+    area.appendChild(b);
+  });
 }
 
 function render() {
   canvas.innerHTML = '';
   const items = state.floors[state.currentFloor].items;
-  Object.values(items).forEach(it = {
+  Object.values(items).forEach(it => {
     const el = document.createElement('div');
-    el.className = `item ${it.type} ${it.status  ''}`;
-    el.style.cssText = `left${it.x}px; top${it.y}px; width${it.w}px; height${it.h}px;`;
+    el.className = `item ${it.type} ${it.status || ''}`;
+    el.style.cssText = `left:${it.x}px; top:${it.y}px; width:${it.w}px; height:${it.h}px;`;
     el.textContent = it.name;
-    el.onclick = () = { if(!state.isEditMode && it.type==='seat') toggleSeat(it.id); };
+    el.onclick = () => { if(!state.isEditMode && it.type==='seat') toggleSeat(it.id); };
     if(state.isEditMode) setupDrag(el, it);
     canvas.appendChild(el);
   });
@@ -78,30 +119,30 @@ function render() {
 
 function toggleSeat(id) {
   const s = state.floors[state.currentFloor].items[id];
-  const next = { '' 'occupied', 'occupied' 'waiting', 'waiting' 'reserved', 'reserved' '' };
-  s.status = next[s.status  ''];
+  const cycle = { '': 'occupied', 'occupied': 'waiting', 'waiting': 'reserved', 'reserved': '' };
+  s.status = cycle[s.status || ''];
   render(); save();
 }
 
 function setupDrag(el, it) {
   let dragging = false;
-  el.onpointerdown = (e) = { dragging = true; el.setPointerCapture(e.pointerId); };
-  el.onpointermove = (e) = {
-    if (!dragging) return;
+  el.onpointerdown = (e) => { dragging = true; el.setPointerCapture(e.pointerId); };
+  el.onpointermove = (e) => {
+    if(!dragging) return;
     it.x += e.movementX; it.y += e.movementY;
     el.style.left = it.x + 'px'; el.style.top = it.y + 'px';
   };
-  el.onpointerup = () = { dragging = false; save(); };
+  el.onpointerup = () => { dragging = false; save(); };
 }
 
-document.getElementById('modeBtn').onclick = (e) = {
+document.getElementById('modeBtn').onclick = (e) => {
   state.isEditMode = !state.isEditMode;
-  e.target.classList.toggle('btn-active', state.isEditMode);
-  document.getElementById('saveBtn').style.display = state.isEditMode  'block'  'none';
+  e.target.textContent = state.isEditMode ? '🔨 編集終了' : '📊 監理モード';
+  document.getElementById('editArea').style.display = state.isEditMode ? 'block' : 'none';
   render();
 };
 
-load();
-script
-body
-html
+init();
+</script>
+</body>
+</html>

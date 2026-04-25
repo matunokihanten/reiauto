@@ -1,11 +1,26 @@
 {
+  "isEditMode": false,
+  "currentFloor": "1F",
   "floors": {
     "1F": {
       "name": "1階",
       "items": {
-        "item_1": { "id": "item_1", "type": "seat", "name": "A-1", "x": 50, "y": 50, "w": 80, "h": 80, "status": "" }
+        "item_1": { "id": "item_1", "type": "seat", "name": "A 4", "x": 220, "y": 170, "w": 100, "h": 100, "status": "" },
+        "item_2": { "id": "item_2", "type": "seat", "name": "A 3", "x": 220, "y": 20, "w": 100, "h": 100, "status": "" },
+        "item_3": { "id": "item_3", "type": "seat", "name": "A 2", "x": 20, "y": 20, "w": 100, "h": 135, "status": "" },
+        "item_4": { "id": "item_4", "type": "seat", "name": "A 1", "x": 20, "y": 180, "w": 100, "h": 70, "status": "" }
       },
-      "nextId": 2
+      "nextId": 5
+    },
+    "2F": {
+      "name": "2階",
+      "items": {},
+      "nextId": 1
+    },
+    "3F": {
+      "name": "3階",
+      "items": {},
+      "nextId": 1
     }
   }
 }
