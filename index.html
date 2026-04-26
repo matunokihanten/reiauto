@@ -507,7 +507,6 @@ var panX = 0, panY = 0;
 var seatModalId = null;
 var pendingStatus = null;
 var pollTimer   = null;
-var lastServerTs = 0;
 
 /* ═══════════════════════════════════════
    UTILITY
@@ -567,8 +566,10 @@ function setBodyMode(mode){
 /* ═══════════════════════════════════════
    SYNC / SERVER (MODIFIED FOR layout.json & save.php)
 ═══════════════════════════════════════ */
-var syncDot   = document.getElementById('syncDot');
-var syncLabel = document.getElementById('syncLabel');
+var syncDot     = document.getElementById('syncDot');
+var syncLabel   = document.getElementById('syncLabel');
+var isSaving    = false;
+var saveTimeout = null;
 
 function setSyncState(s){
   syncDot.className = 'sync-dot' + (s==='ok'?'':s==='syncing'?' syncing':' error');
@@ -576,22 +577,26 @@ function setSyncState(s){
 }
 
 async function loadFromServer(){
+  // 編集中、アイテム選択中、または自分が保存中の場合は画面の強制更新を防ぐ
+  if (isSaving || selectedIds.length > 0 || isEditMode) return;
+
   try{
-    setSyncState('syncing');
     var r = await fetch('layout.json?t=' + Date.now());
     if(!r.ok) throw new Error(r.status);
     var data = await r.json();
-    if(data.lastUpdate && data.lastUpdate > lastServerTs){
-      lastServerTs = data.lastUpdate;
-      if(data.floors){
-        if(data.lastUpdate >= (state.lastUpdate||0) - 1500){
-          state.floors = data.floors;
-          if(data.currentFloor && state.floors[data.currentFloor])
-            state.currentFloor = data.currentFloor;
-          state.lastUpdate = data.lastUpdate;
-          saveLocal();
-          renderAll(); updateStats(); renderFloorTabs();
-        }
+
+    if(data && data.floors) {
+      var currentStr = JSON.stringify(state.floors);
+      var serverStr = JSON.stringify(data.floors);
+      
+      // 差分がある場合のみ更新（lastUpdate のタイムスタンプに依存しない確実な同期）
+      if(currentStr !== serverStr) {
+        state.floors = data.floors;
+        state.lastUpdate = data.lastUpdate || Date.now();
+        saveLocal();
+        renderAll();
+        updateStats();
+        renderFloorTabs();
       }
     }
     setSyncState('ok');
@@ -601,27 +606,31 @@ async function loadFromServer(){
   }
 }
 
-async function pushToServer(){
-  try{
-    setSyncState('syncing');
-    state.lastUpdate = Date.now();
-    saveLocal();
-    var r = await fetch('save.php',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify(state)
-    });
-    if(!r.ok) throw new Error(r.status);
-    var resText = await r.text();
-    if(resText === "success"){
-      lastServerTs = state.lastUpdate;
+function pushToServer(){
+  if(saveTimeout) clearTimeout(saveTimeout);
+  setSyncState('syncing');
+
+  saveTimeout = setTimeout(async function(){
+    try{
+      isSaving = true;
+      state.lastUpdate = Date.now();
+      saveLocal();
+      var r = await fetch('save.php',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(state)
+      });
+      if(!r.ok) throw new Error(r.status);
+      await r.text();
+      setSyncState('ok');
+      updateSyncTime();
+    }catch(e){
+      setSyncState('error');
+      toast('⚠ サーバー保存失敗（ローカルは保存済）');
+    } finally {
+      isSaving = false;
     }
-    setSyncState('ok');
-    updateSyncTime();
-  }catch(e){
-    setSyncState('error');
-    toast('⚠ サーバー保存失敗（ローカルは保存済）');
-  }
+  }, 300); // 通信の追い越しを防ぐため300ms待機してから送信
 }
 
 function saveLocal(){
@@ -635,6 +644,8 @@ function updateSyncTime(){
 
 function startPolling(){
   if(pollTimer) clearInterval(pollTimer);
+  // 初回も一回実行しておく
+  loadFromServer();
   pollTimer = setInterval(loadFromServer, POLL_MS);
 }
 
