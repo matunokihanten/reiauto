@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,maximum-scale=1.0"/>
 <title>松乃木飯店 Pro Ultimate</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"/>
+<script src="/socket.io/socket.io.js"></script>
 <style>
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    DESIGN TOKENS
@@ -74,7 +75,6 @@ body.dark #canvasWrap{background:#0f172a;}
 
 /* モード切替: 管理モード時はサイドバーを完全に隠す */
 body.manage-mode #sidebar{display:none!important;}
-
 body.public-mode #sidebar{display:none!important;}
 body.public-mode .edit-only{display:none!important;}
 body.manage-mode .edit-only{display:none!important;}
@@ -275,8 +275,8 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
   <div id="statsBar">
     <div class="stat-chip"><div class="stat-dot" style="background:#6b7280"></div><span id="stEmpty">0</span>席空</div>
     <div class="stat-chip"><div class="stat-dot" style="background:var(--c-occupied)"></div><span id="stOccupied">0</span>使用中</div>
-    <div class="stat-chip"><div class="stat-dot" style="background:var(--c-reserved)"></div><span id="stReserved">0</span>予約</div>
     <div class="stat-chip"><div class="stat-dot" style="background:var(--c-waiting)"></div><span id="stWaiting">0</span>まもなく</div>
+    <div class="stat-chip"><div class="stat-dot" style="background:var(--c-reserved)"></div><span id="stReserved">0</span>予約</div>
   </div>
 
   <div class="spacer"></div>
@@ -320,12 +320,12 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
           <div class="pub-stat-lbl">使用中</div>
         </div>
         <div class="pub-stat-item">
-          <div class="pub-stat-num" id="ps-res" style="color:var(--c-reserved)">-</div>
-          <div class="pub-stat-lbl">予約</div>
-        </div>
-        <div class="pub-stat-item">
           <div class="pub-stat-num" id="ps-wait" style="color:var(--c-waiting)">-</div>
           <div class="pub-stat-lbl">まもなく空</div>
+        </div>
+        <div class="pub-stat-item">
+          <div class="pub-stat-num" id="ps-res" style="color:var(--c-reserved)">-</div>
+          <div class="pub-stat-lbl">予約</div>
         </div>
       </div>
     </div>
@@ -461,7 +461,6 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
 /* ═══════════════════════════════════════
    CONFIG & CONSTANTS
 ═══════════════════════════════════════ */
-var POLL_MS   = 3000;
 var TIMER_MS  = 1000;
 var LS_KEY    = 'matsunoki_v2';
 var LS_THEME  = 'matsunoki_theme';
@@ -506,10 +505,10 @@ var selectedIds = [];
 var histBuf     = [];
 var histIdx     = -1;
 var curScale    = 1;
+// ★変更: 背景固定のためパンの変数を常に0にする
 var panX = 0, panY = 0;
 var seatModalId = null;
 var pendingStatus = null;
-var pollTimer   = null;
 
 /* ═══════════════════════════════════════
    UTILITY
@@ -567,35 +566,40 @@ function setBodyMode(mode){
 }
 
 /* ═══════════════════════════════════════
-   SYNC / SERVER (MODIFIED FOR layout.json & save.php)
+   SYNC / SERVER (SOCKET.IO 100%)
 ═══════════════════════════════════════ */
 var syncDot     = document.getElementById('syncDot');
 var syncLabel   = document.getElementById('syncLabel');
 var isSaving    = false;
 var saveTimeout = null;
+var socket      = null;
 
 function setSyncState(s){
   syncDot.className = 'sync-dot' + (s==='ok'?'':s==='syncing'?' syncing':' error');
   syncLabel.textContent = s==='ok'?'同期済み':s==='syncing'?'同期中…':'オフライン';
 }
 
-async function loadFromServer(){
-  // 編集中、アイテム選択中、または自分が保存中の場合は画面の強制更新を防ぐ
-  if (isSaving || selectedIds.length > 0 || isEditMode) return;
+function initSocket() {
+  if (typeof io === 'undefined') {
+    console.error("Socket.io is not loaded");
+    setSyncState('error');
+    return;
+  }
+  
+  socket = io();
 
-  try{
-    var r = await fetch('layout.json?t=' + Date.now());
-    if(!r.ok) throw new Error(r.status);
-    var data = await r.json();
+  // サーバーからのリアルタイム更新受信
+  socket.on('dataChanged', function(newData) {
+    // 自分が編集中や、まさに今保存中の場合は競合を防ぐため上書きしない
+    if (isSaving || selectedIds.length > 0 || isEditMode) return;
 
-    if(data && data.floors) {
+    if (newData && newData.floors) {
       var currentStr = JSON.stringify(state.floors);
-      var serverStr = JSON.stringify(data.floors);
+      var serverStr = JSON.stringify(newData.floors);
       
-      // 差分がある場合のみ更新（確実な同期）
-      if(currentStr !== serverStr) {
-        state.floors = data.floors;
-        state.lastUpdate = data.lastUpdate || Date.now();
+      if (currentStr !== serverStr) {
+        state.floors = newData.floors;
+        state.lastUpdate = newData.lastUpdate || Date.now();
         saveLocal();
         renderAll();
         updateStats();
@@ -604,36 +608,37 @@ async function loadFromServer(){
     }
     setSyncState('ok');
     updateSyncTime();
-  }catch(e){
-    setSyncState('error');
-  }
+  });
+
+  socket.on('connect', function() { setSyncState('ok'); });
+  socket.on('disconnect', function() { setSyncState('error'); });
 }
 
+// 保存処理（完全にSocket.io一本化・旧fetch廃止）
 function pushToServer(){
   if(saveTimeout) clearTimeout(saveTimeout);
   setSyncState('syncing');
-  isSaving = true; // 送信の追い越し・衝突を防ぐために即座にロックをかける
+  isSaving = true; // 送信ロック
 
-  saveTimeout = setTimeout(async function(){
-    try{
+  saveTimeout = setTimeout(function(){
+    try {
       state.lastUpdate = Date.now();
       saveLocal();
-      var r = await fetch('save.php',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify(state)
-      });
-      if(!r.ok) throw new Error(r.status);
-      await r.text();
-      setSyncState('ok');
-      updateSyncTime();
-    }catch(e){
+      
+      if (socket && socket.connected) {
+        socket.emit('updateData', state); // サーバーに送信
+        setSyncState('ok');
+        updateSyncTime();
+      } else {
+        setSyncState('error');
+        toast('⚠ サーバーに接続されていません');
+      }
+    } catch(e) {
       setSyncState('error');
-      toast('⚠ サーバー保存失敗（ローカルは保存済）');
     } finally {
-      isSaving = false; // 送信完了後にロック解除
+      isSaving = false; // ロック解除
     }
-  }, 300); // 連続操作時の通信負荷を防ぐために300ms待機してから送信
+  }, 100);
 }
 
 function saveLocal(){
@@ -643,12 +648,6 @@ function saveLocal(){
 function updateSyncTime(){
   var el=document.getElementById('lastSyncTime');
   if(el) el.textContent='最終同期: '+new Date().toLocaleTimeString('ja-JP');
-}
-
-function startPolling(){
-  if(pollTimer) clearInterval(pollTimer);
-  loadFromServer();
-  pollTimer = setInterval(loadFromServer, POLL_MS);
 }
 
 /* ═══════════════════════════════════════
@@ -727,6 +726,7 @@ var canvas     = document.getElementById('floorCanvas');
 var canvasWrap = document.getElementById('canvasWrap');
 
 function applyTransform(){
+  // ★変更: 背景固定のため、常に中央に配置（パン移動を無効化）
   canvas.style.transform = 'translate(0px, 0px) scale('+curScale+')';
   canvas.style.transformOrigin = 'center center';
 }
@@ -739,6 +739,37 @@ function fitCanvas(){
   );
   applyTransform();
 }
+
+/* ★変更: ドラッグで画面が動かないようにピンチ操作のみに制限 */
+(function(){
+  var ptrMap=new Map(), initDist=0, initScale=1;
+  canvasWrap.addEventListener('pointerdown', function(e){
+    ptrMap.set(e.pointerId,e);
+    if(ptrMap.size===2){
+      var pts=[...ptrMap.values()];
+      initDist=Math.hypot(pts[1].clientX-pts[0].clientX,pts[1].clientY-pts[0].clientY);
+      initScale=curScale;
+    }
+  });
+  canvasWrap.addEventListener('pointermove', function(e){
+    if(!ptrMap.has(e.pointerId)) return;
+    ptrMap.set(e.pointerId,e);
+    if(ptrMap.size===2){
+      var pts=[...ptrMap.values()];
+      var dist=Math.hypot(pts[1].clientX-pts[0].clientX,pts[1].clientY-pts[0].clientY);
+      curScale=clamp(initScale*(dist/initDist),0.15,3);
+      applyTransform();
+    }
+  });
+  function endP(e){ ptrMap.delete(e.pointerId); }
+  canvasWrap.addEventListener('pointerup',endP);
+  canvasWrap.addEventListener('pointercancel',endP);
+  canvasWrap.addEventListener('wheel', function(e){
+    e.preventDefault();
+    curScale=clamp(curScale*(e.deltaY>0?0.9:1.1),0.15,3);
+    applyTransform();
+  },{passive:false});
+})();
 
 /* ═══════════════════════════════════════
    RENDER
@@ -757,7 +788,7 @@ function renderAll(){
     canvas.appendChild(makeItemEl(it));
   });
 
-  /* dock connectors */
+  /* dock connectors (★変更: 線のコネクターに復旧) */
   for(var i=0;i<seats.length;i++){
     for(var j=i+1;j<seats.length;j++){
       var badge = calcDock(seats[i],seats[j]);
@@ -816,6 +847,7 @@ function makeItemEl(it){
   return el;
 }
 
+// ★変更: ドッキングの線をしっかり表示する判定に復元
 function calcDock(a,b){
   var T=2;
   if(Math.abs(a.x-b.x)<T&&Math.abs(a.w-b.w)<T&&Math.abs(a.y+a.h-b.y)<T)
@@ -920,7 +952,7 @@ function setupItemInteraction(el, id){
 /* ═══════════════════════════════════════
    SEAT TOGGLE (simple cycle)
 ═══════════════════════════════════════ */
-// 修正箇所：タップ時のサイクルを「空き→使用中→まもなく空き→予約→空き」に変更
+// ★変更: タップ時のサイクルを「空席(無) → 使用中(緑) → まもなく空き(オレンジ) → 予約(青) → 空席(無)」に変更
 var STATUS_CYCLE = {'':'occupied','occupied':'waiting','waiting':'reserved','reserved':''};
 
 function toggleSeatSimple(id){
@@ -943,7 +975,6 @@ function openSeatModal(id){
   document.getElementById('smGuestCount').value=it.guestCount||'';
   document.getElementById('smMemo').value=it.memo||'';
 
-  /* status buttons */
   var map={'':'smEmpty','occupied':'smOccupied','waiting':'smWaiting','reserved':'smReserved'};
   ['smEmpty','smOccupied','smWaiting','smReserved'].forEach(function(bid){
     var b=document.getElementById(bid);
@@ -951,11 +982,9 @@ function openSeatModal(id){
   });
   var cur=map[it.status||'']; if(cur){ var cb=document.getElementById(cur); if(cb) cb.classList.add('selected'); }
 
-  /* reserved fields */
   var rf=document.getElementById('smReservedFields');
   rf.style.display = it.status==='reserved' ? 'flex':'none';
 
-  /* current info */
   var info=document.getElementById('smCurrentInfo');
   if(it.status && it.status!=='reserved' && it.occupiedSince){
     info.style.display='block';
@@ -970,7 +999,6 @@ function openSeatModal(id){
   openModal('seatModal');
 }
 
-/* status selector buttons */
 function setupStatusBtn(btnId, status){
   var btn = document.getElementById(btnId);
   if(!btn) return;
@@ -1034,7 +1062,6 @@ function updateSidebarForSelection(){
     }
   }
 
-  /* モバイルサイドバー */
   if(selectedIds.length>0 && window.innerWidth<=700)
     document.getElementById('sidebar').classList.add('open');
 }
@@ -1149,7 +1176,6 @@ document.getElementById('modeBtn').onclick = function(){
   var sbt=document.getElementById('sbToggleBtn');
   sbt.style.display=(isEditMode&&window.innerWidth<=700)?'inline-block':'none';
   updateHistBtns(); renderAll(); renderFloorTabs();
-  setTimeout(fitCanvas, 50); // パネル開閉後にキャンバスサイズを再調整
 };
 
 document.getElementById('addSeatBtn').onclick = function(){ addItem('seat','席',100,100); };
@@ -1189,12 +1215,10 @@ document.getElementById('delFloorBtn').onclick = function(){
   toast('フロアを削除しました');
 };
 
-/* フロア名変更 */
 document.getElementById('floorNameInput').onchange = function(e){
   curFloor().name=e.target.value; renderFloorTabs(); pushHistory(); pushToServer();
 };
 
-/* prop panel */
 document.getElementById('propName').onchange = function(e){
   if(selectedIds.length===1){ curItems()[selectedIds[0]].name=e.target.value; renderAll(); pushHistory(); pushToServer(); }
 };
@@ -1219,7 +1243,6 @@ document.getElementById('delBtn').onclick = function(){
 document.getElementById('undoBtn').onclick = undo;
 document.getElementById('redoBtn').onclick = redo;
 
-/* ドッキング */
 document.getElementById('dockBtn').onclick = function(){
   var seats=selectedIds.map(function(id){ return curItems()[id]; }).filter(function(it){ return it&&it.type==='seat'; });
   if(seats.length<2){ toast('2つ以上の席を選択してください'); return; }
@@ -1236,7 +1259,7 @@ document.getElementById('dockBtn').onclick = function(){
     var ny=seats[0].y+seats[0].h;
     for(var i=1;i<seats.length;i++){ seats[i].y=ny; seats[i].x=seats[0].x; ny+=seats[i].h; }
   }
-  pushHistory(); renderAll(); pushToServer(); toast('席をドッキングしました ✓');
+  pushHistory(); setSelection([]); pushToServer(); toast('席をドッキングしました ✓');
 };
 
 document.getElementById('undockBtn').onclick = function(){
@@ -1244,10 +1267,9 @@ document.getElementById('undockBtn').onclick = function(){
     var it=curItems()[id];
     if(it&&it.homeX!==undefined){ it.x=it.homeX; it.y=it.homeY; }
   });
-  pushHistory(); renderAll(); pushToServer(); toast('ホーム位置に戻しました');
+  pushHistory(); setSelection([]); pushToServer(); toast('ホーム位置に戻しました');
 };
 
-/* 管理ボタン */
 document.getElementById('clearAllBtn').onclick = function(){
   if(!confirm('全席を空席リセットしますか？')) return;
   Object.values(curItems()).forEach(function(it){
@@ -1284,7 +1306,6 @@ document.getElementById('pubLinkBtn').onclick = function(){
   window.open(location.href.split('?')[0]+'?public=true','_blank');
 };
 
-/* アイコン */
 (function(){
   var grid=document.getElementById('iconGrid');
   ICONS.forEach(function(icon){
@@ -1364,7 +1385,6 @@ function setupPublicMode(){
    INIT
 ═══════════════════════════════════════ */
 async function init(){
-  /* ローカルキャッシュ */
   try{
     var ls=localStorage.getItem(LS_KEY);
     if(ls){ var d=JSON.parse(ls); if(d&&d.floors){ state=d; } }
@@ -1373,20 +1393,19 @@ async function init(){
   if(isPublic) setupPublicMode();
   else setBodyMode('manage');
 
+  initSocket();
+
   renderFloorTabs();
   renderAll();
   fitCanvas();
   pushHistory();
-
-  await loadFromServer();
-  startPolling();
 
   window.addEventListener('resize', fitCanvas);
 }
 
 init();
 
-})(); // IIFE end
+})();
 </script>
 </body>
 </html>
