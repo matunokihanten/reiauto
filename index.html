@@ -1,515 +1,1432 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,maximum-scale=1.0" />
-<title>松乃木飯店 Pro (Ver. Ultimate 1.4.1 Auto-Recovery & Timer Fix)</title>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,maximum-scale=1.0"/>
+<title>松乃木飯店 Pro Ultimate</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"/>
 <style>
-  :root {
-    --bg-floor: #d9d9cb;
-    --wall-color: #800000;
-    --seat-gray: #e0e0e0;
-    --accent: #2563eb;
-    --accent-light: rgba(37, 99, 235, 0.15);
-    --danger: #dc2626;
-    --success: #16a34a;
-    --header-bg: #1f2937;
-    --text-main: #111;
-  }
-  body.dark-mode {
-    --bg-floor: #2d3748;
-    --seat-gray: #4a5568;
-    --wall-color: #9b1c1c; 
-    --header-bg: #030712;
-    --text-main: #f3f4f6;
-    background-color: #111827;
-    color: #e5e7eb;
-  }
-  html, body { margin: 0; padding: 0; width: 100vw; height: 100dvh; overflow: hidden; overscroll-behavior: none; font-family: sans-serif; }
-  body { background: #f3f4f6; display: flex; flex-direction: column; transition: background-color 0.3s; }
-  header { background: var(--header-bg); color: white; padding: 8px 16px; display: flex; justify-content: space-between; align-items: center; z-index: 2000; box-shadow: 0 2px 10px rgba(0,0,0,0.3); }
-  .app-title { font-weight: 800; font-size: 1.1rem; color: #fbbf24; }
-  .toolbar { display: flex; gap: 8px; align-items: center; }
-  .save-status { font-size: 12px; color: #9ca3af; min-width: 80px; }
-  button { padding: 6px 14px; border-radius: 6px; border: none; cursor: pointer; font-weight: bold; transition: all 0.2s; background: #374151; color: #d1d5db; }
-  button:hover { background: #4b5563; color: white; }
-  .btn-active { background: #fbbf24 !important; color: #1f2937 !important; }
-  .add-seat { background: var(--success); color: white; }
-  .add-wall { background: var(--wall-color); color: white; }
-  .reset-layout { background: #6366f1; color: white; }
-  .floor-btn-group { display: flex; background: #111827; padding: 3px; border-radius: 8px; gap: 2px; margin: 0 10px; }
-  .floor-btn { background: transparent; color: #9ca3af; padding: 4px 12px; font-size: 13px; border-radius: 5px; }
-  .floor-btn.active { background: #374151; color: white; }
-  .floor-name-input { background: #374151; border: 1px solid #4b5563; color: white; padding: 6px 10px; border-radius: 6px; width: 100px; font-size: 13px; }
-  .main { display: flex; flex: 1; overflow: hidden; position: relative; }
-  #canvasContainer { flex: 1; overflow: hidden; background: #9ca3af; position: relative; touch-action: none; display: flex; align-items: center; justify-content: center; }
-  body.dark-mode #canvasContainer { background: #1f2937; }
-  
-  #floorCanvas { position: relative; width: 1200px; height: 800px; background-color: var(--bg-floor); box-shadow: 0 10px 50px rgba(0,0,0,0.4); flex-shrink: 0; transition: background-color 0.3s; }
-  
-  .item { position: absolute; box-sizing: border-box; cursor: move; touch-action: none; user-select: none; transition: transform 0.1s, box-shadow 0.1s, left 0.3s ease, top 0.3s ease; }
-  .item-dragging { transform: scale(1.04); box-shadow: 0 15px 30px rgba(0,0,0,0.3) !important; z-index: 1000 !important; transition: none !important; }
-  .item-selected { outline: 3px solid var(--accent); outline-offset: 2px; z-index: 50 !important; }
-  .seat { background: var(--seat-gray); border: 2px solid #666; border-bottom-width: 4px; border-right-width: 4px; display: flex; flex-direction: column; align-items: center; justify-content: center; border-radius: 6px; color: var(--text-main); }
-  .item-name { pointer-events: none; font-weight: bold; }
-  .time-display { font-size: 13px; margin-top: 4px; font-weight: normal; opacity: 0.8; }
-  .memo-display { font-size: 11px; background: rgba(0,0,0,0.1); width: 90%; margin-top: 2px; text-align: center; border-radius: 2px; }
-  .reserved { background: #3b82f6 !important; color: white !important; }
-  .occupied { background: var(--success) !important; color: white !important; }
-  .waiting { background: #f59e0b !important; color: white !important; }
-  .wall { background: var(--wall-color); border-radius: 2px; }
-  .icon-item { display: flex; align-items: center; justify-content: center; overflow: visible; }
-  .icon-emoji { pointer-events: none; line-height: 1; }
-  .resizer { width: 18px; height: 18px; background: var(--accent); position: absolute; right: -9px; bottom: -9px; cursor: nwse-resize; display: none; border-radius: 50%; border: 3px solid white; }
-  .item-selected .resizer { display: block; }
-  .dock-connector { position: absolute; background: #555; pointer-events: none; z-index: 15; display: flex; align-items: center; justify-content: center; color: #ffd700; font-size: 10px; border-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
-  .dock-connector::after { content: '🔗'; }
-  
-  #selectionBox { position: absolute; border: 1px solid var(--accent); background: var(--accent-light); pointer-events: none; display: none; z-index: 2500; }
-  .guide { position: absolute; background-color: #ef4444; z-index: 3000; pointer-events: none; display: none; }
-  .guide-v { width: 1px; height: 100%; top: 0; }
-  .guide-h { height: 1px; width: 100%; left: 0; }
-  
-  .sidebar { width: 280px; background: white; border-left: 1px solid #e5e7eb; padding: 20px; display: flex; flex-direction: column; z-index: 100; overflow-y: auto; box-sizing: border-box; }
-  body.dark-mode .sidebar { background: #1f2937; border-left-color: #374151; }
-  h3 { margin-top: 0; font-size: 1rem; border-bottom: 2px solid #f3f4f6; padding-bottom: 10px; }
-  
-  #iconModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 4000; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
-  .modal-content { background: white; padding: 24px; border-radius: 12px; width: 350px; }
-  .icon-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin: 20px 0; }
-  .icon-option { font-size: 32px; padding: 12px; cursor: pointer; border: 1px solid #eee; border-radius: 8px; text-align: center; }
-  body.mode-manage .sidebar { display: none; }
-  body.mode-manage.sidebar-open .sidebar { display: flex !important; }
-  body.mode-public .sidebar, body.mode-public .toolbar button:not(#themeBtn) { display: none !important; }
-  #publicLegend { display: none; position: absolute; bottom: 20px; left: 20px; background: rgba(255,255,255,0.9); padding: 12px 20px; border-radius: 8px; z-index: 1000; gap: 20px; }
-  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: bold; }
-  .legend-color { width: 18px; height: 18px; border-radius: 4px; }
-</style>
-<script src="/socket.io/socket.io.js"></script>
-</head>
-<body class="mode-manage">
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   DESIGN TOKENS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+:root {
+  --c-bg:        #f0f2f5;
+  --c-canvas:    #d9d9cb;
+  --c-wall:      #7f1d1d;
+  --c-seat:      #e8e8e8;
+  --c-accent:    #2563eb;
+  --c-accent2:   rgba(37,99,235,.18);
+  --c-danger:    #dc2626;
+  --c-success:   #16a34a;
+  --c-warn:      #d97706;
+  --c-header:    #111827;
+  --c-sidebar:   #ffffff;
+  --c-text:      #111827;
+  --c-muted:     #6b7280;
+  --c-border:    #e5e7eb;
+  --c-occupied:  #16a34a;
+  --c-reserved:  #2563eb;
+  --c-waiting:   #d97706;
+  --radius:      8px;
+  --shadow:      0 4px 20px rgba(0,0,0,.12);
+  --header-h:    54px;
+  --sidebar-w:   290px;
+  --transition:  all .2s ease;
+}
+body.dark {
+  --c-bg:      #0f172a;
+  --c-canvas:  #1e293b;
+  --c-seat:    #334155;
+  --c-wall:    #991b1b;
+  --c-header:  #020617;
+  --c-sidebar: #1e293b;
+  --c-text:    #f1f5f9;
+  --c-muted:   #94a3b8;
+  --c-border:  #334155;
+}
 
-<header>
-  <div class="app-title" id="mainTitle">MATSUNOKI PRO</div>
-  <div class="toolbar">
-    <div id="saveStatus" class="save-status">同期済み</div>
-    <button id="themeBtn">🌙</button>
-    <button id="fullscreenBtn">🔲 全画面</button>
-    <div id="floorBtnArea" class="floor-btn-group"></div>
-    <input type="text" id="floorNameEdit" class="floor-name-input" style="display:none;" placeholder="フロア名">
-    <button id="refreshBtn">🔄 更新</button>
-    <button id="resetLayoutBtn" class="reset-layout">🏠 配置リセット</button>
-    <button id="modeBtn">📊 監理モード</button>
-    <button id="addSeatBtn" class="add-seat" style="display:none;">+ 席</button>
-    <button id="addWallBtn" class="add-wall" style="display:none;">+ 壁</button>
-    <button id="addIconBtn" style="display:none;">🎨 アイコン</button>
-    <button id="saveBtn" style="display:none;">💾 保存</button>
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   RESET & BASE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{width:100vw;height:100dvh;overflow:hidden;overscroll-behavior:none;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  font-size:14px;color:var(--c-text);background:var(--c-bg);}
+button{cursor:pointer;border:none;font-family:inherit;font-weight:600;transition:var(--transition);}
+input,textarea,select{font-family:inherit;font-size:14px;}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   LAYOUT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+body{display:flex;flex-direction:column;}
+#header{height:var(--header-h);min-height:var(--header-h);background:var(--c-header);
+  color:#fff;display:flex;align-items:center;gap:8px;padding:0 14px;
+  z-index:2000;box-shadow:0 2px 12px rgba(0,0,0,.4);flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;}
+#main{display:flex;flex:1;overflow:hidden;}
+#canvasWrap{flex:1;overflow:hidden;position:relative;background:#6b7280;
+  display:flex;align-items:center;justify-content:center;touch-action:none;}
+body.dark #canvasWrap{background:#0f172a;}
+#floorCanvas{position:relative;width:1200px;height:800px;background:var(--c-canvas);
+  box-shadow:0 20px 60px rgba(0,0,0,.4);flex-shrink:0;overflow:hidden;transition:background .3s;}
+#sidebar{width:var(--sidebar-w);min-width:var(--sidebar-w);background:var(--c-sidebar);
+  border-left:1px solid var(--c-border);display:flex;flex-direction:column;
+  overflow-y:auto;z-index:100;transition:var(--transition);}
+
+/* モード切替 */
+body.public-mode #sidebar{display:none!important;}
+body.public-mode .edit-only{display:none!important;}
+body.public-mode .manage-only{display:none!important;}
+body.manage-mode .edit-only{display:none!important;}
+body.edit-mode .manage-only{display:none!important;}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   HEADER ELEMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.app-title{font-size:1.05rem;font-weight:800;color:#fbbf24;white-space:nowrap;margin-right:4px;}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#4ade80;flex-shrink:0;transition:background .4s;}
+.sync-dot.syncing{background:#fbbf24;animation:pulse .8s infinite;}
+.sync-dot.error{background:#ef4444;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.hbtn{padding:5px 12px;border-radius:6px;background:#374151;color:#d1d5db;font-size:13px;white-space:nowrap;}
+.hbtn:hover{background:#4b5563;color:#fff;}
+.hbtn.active{background:#fbbf24!important;color:#111827!important;}
+.hbtn.danger{background:#7f1d1d!important;color:#fca5a5!important;}
+.hbtn.success{background:#14532d!important;color:#86efac!important;}
+.hbtn.primary{background:#1d4ed8!important;color:#bfdbfe!important;}
+#floorTabs{display:flex;background:#030912;border-radius:8px;padding:3px;gap:2px;max-width:300px;overflow:hidden;}
+.ftab{padding:4px 12px;border-radius:5px;background:transparent;color:#9ca3af;font-size:12px;white-space:nowrap;}
+.ftab.active{background:#374151;color:#fff;}
+.spacer{flex:1;min-width:8px;}
+#syncLabel{font-size:11px;color:#9ca3af;white-space:nowrap;}
+#statsBar{display:flex;gap:10px;align-items:center;padding:4px 10px;background:#1f2937;border-radius:6px;flex-shrink:0;}
+.stat-chip{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:700;white-space:nowrap;}
+.stat-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0;}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   FLOOR ITEMS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.item{position:absolute;box-sizing:border-box;cursor:move;touch-action:none;user-select:none;}
+.item-dragging{transform:scale(1.05);box-shadow:0 12px 32px rgba(0,0,0,.35)!important;z-index:1000!important;}
+.item-selected{outline:3px solid var(--c-accent);outline-offset:2px;z-index:50!important;}
+
+/* SEAT */
+.seat{
+  background:var(--c-seat);
+  border:2px solid #aaa;
+  border-bottom:4px solid #888;
+  border-right:4px solid #888;
+  border-radius:8px;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  color:var(--c-text);
+  transition:background .25s,color .25s,box-shadow .25s;
+}
+.seat:hover:not(.item-dragging){box-shadow:0 4px 12px rgba(0,0,0,.2);}
+.seat.occupied{background:var(--c-occupied)!important;color:#fff!important;border-color:#15803d!important;}
+.seat.reserved{background:var(--c-reserved)!important;color:#fff!important;border-color:#1d4ed8!important;}
+.seat.waiting{background:var(--c-waiting)!important;color:#fff!important;border-color:#b45309!important;animation:blink 1.2s infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.75}}
+
+/* WALL */
+.wall{background:var(--c-wall);border-radius:3px;z-index:10!important;}
+
+/* ICON */
+.icon-item{display:flex;align-items:center;justify-content:center;overflow:visible;background:transparent;border:none;}
+.icon-emoji{pointer-events:none;line-height:1;}
+
+/* TEXT LABELS */
+.lbl-name{pointer-events:none;font-weight:700;font-size:clamp(11px,2vmin,15px);line-height:1.2;text-align:center;max-width:95%;overflow:hidden;text-overflow:ellipsis;}
+.lbl-guest{pointer-events:none;font-size:10px;opacity:.9;text-align:center;max-width:90%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.lbl-time{pointer-events:none;font-size:11px;font-weight:600;margin-top:2px;opacity:.85;font-variant-numeric:tabular-nums;}
+.lbl-memo{pointer-events:none;font-size:10px;background:rgba(0,0,0,.15);width:88%;margin-top:2px;text-align:center;border-radius:3px;padding:1px 3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+
+/* RESIZER */
+.resizer{width:18px;height:18px;background:var(--c-accent);position:absolute;right:-9px;bottom:-9px;cursor:nwse-resize;display:none;border-radius:50%;border:3px solid #fff;z-index:10;}
+.item-selected .resizer{display:block;}
+
+/* DOCK BADGE */
+.dock-badge{position:absolute;pointer-events:none;z-index:15;background:#475569;color:#ffd700;font-size:9px;border-radius:3px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,.4);}
+.dock-badge::after{content:'⛓';}
+
+/* SELECTION BOX */
+#selBox{position:absolute;border:2px solid var(--c-accent);background:var(--c-accent2);pointer-events:none;display:none;z-index:2500;}
+
+/* GUIDES */
+.guide{position:absolute;pointer-events:none;display:none;z-index:3000;}
+#gV{width:1px;height:100%;top:0;background:#ef4444;}
+#gH{height:1px;width:100%;left:0;background:#ef4444;}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   SIDEBAR
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.sb-section{padding:14px 16px;border-bottom:1px solid var(--c-border);}
+.sb-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--c-muted);margin-bottom:10px;}
+.sb-btn{width:100%;padding:9px 12px;border-radius:7px;background:#f3f4f6;color:var(--c-text);font-size:13px;margin-bottom:6px;text-align:left;}
+body.dark .sb-btn{background:#334155;color:#e2e8f0;}
+.sb-btn:hover{background:#e5e7eb;}
+body.dark .sb-btn:hover{background:#475569;}
+.sb-btn.red{background:#fee2e2;color:#991b1b;}
+body.dark .sb-btn.red{background:#450a0a;color:#fca5a5;}
+.sb-btn.blue{background:#dbeafe;color:#1e40af;}
+body.dark .sb-btn.blue{background:#1e3a5f;color:#bfdbfe;}
+.sb-btn.green{background:#dcfce7;color:#166534;}
+body.dark .sb-btn.green{background:#052e16;color:#86efac;}
+.form-label{font-size:11px;font-weight:700;color:var(--c-muted);margin-bottom:4px;display:block;}
+.form-input{width:100%;padding:8px 10px;border:1px solid var(--c-border);border-radius:6px;
+  background:var(--c-sidebar);color:var(--c-text);font-size:13px;margin-bottom:8px;}
+.form-input:focus{outline:none;border-color:var(--c-accent);}
+body.dark .form-input{background:#0f172a;}
+.info-row{display:flex;justify-content:space-between;align-items:center;font-size:12px;padding:4px 0;border-bottom:1px solid var(--c-border);}
+.info-val{font-weight:700;color:var(--c-accent);}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   PUBLIC LEGEND & STATS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+#pubLegend{position:absolute;bottom:16px;left:16px;background:rgba(255,255,255,.93);
+  backdrop-filter:blur(6px);padding:14px 20px;border-radius:10px;z-index:1000;
+  display:none;flex-direction:column;gap:8px;box-shadow:var(--shadow);}
+body.dark #pubLegend{background:rgba(30,41,59,.93);}
+.leg-item{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;}
+.leg-dot{width:16px;height:16px;border-radius:4px;flex-shrink:0;}
+#pubStats{position:absolute;top:14px;right:14px;background:rgba(255,255,255,.93);
+  backdrop-filter:blur(6px);padding:14px 20px;border-radius:10px;z-index:1000;
+  display:none;box-shadow:var(--shadow);min-width:160px;}
+body.dark #pubStats{background:rgba(30,41,59,.93);}
+.pub-stat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;}
+.pub-stat-item{text-align:center;}
+.pub-stat-num{font-size:24px;font-weight:800;}
+.pub-stat-lbl{font-size:11px;color:var(--c-muted);}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   MODALS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:4000;
+  display:none;align-items:center;justify-content:center;backdrop-filter:blur(4px);}
+.modal-overlay.open{display:flex;}
+.modal-box{background:var(--c-sidebar);border-radius:14px;padding:26px;width:min(440px,94vw);
+  box-shadow:0 30px 80px rgba(0,0,0,.4);}
+.modal-title{font-size:17px;font-weight:800;margin-bottom:18px;display:flex;align-items:center;gap:10px;}
+.modal-footer{display:flex;gap:10px;margin-top:20px;}
+.modal-footer button{flex:1;padding:10px;border-radius:8px;font-size:14px;}
+.btn-cancel{background:var(--c-border);color:var(--c-muted);}
+.btn-ok{background:var(--c-accent);color:#fff;}
+.btn-danger{background:var(--c-danger);color:#fff;}
+
+/* SEAT STATUS SELECTOR */
+.status-selector{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px;}
+.st-btn{padding:12px 8px;border-radius:8px;border:2px solid transparent;
+  font-size:13px;text-align:center;transition:var(--transition);background:#f3f4f6;color:var(--c-text);}
+body.dark .st-btn{background:#334155;color:#e2e8f0;}
+.st-btn:hover{filter:brightness(1.1);}
+.st-btn.selected{border-color:var(--c-accent);box-shadow:0 0 0 3px var(--c-accent2);}
+.st-btn.st-empty{background:#f9fafb;}
+.st-btn.st-occupied{background:#dcfce7;color:#166534;}
+.st-btn.st-waiting{background:#fef3c7;color:#92400e;}
+.st-btn.st-reserved{background:#dbeafe;color:#1e40af;}
+
+/* ICON GRID */
+.icon-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0;max-height:240px;overflow-y:auto;}
+.icon-option{font-size:26px;padding:10px;cursor:pointer;border:1px solid var(--c-border);
+  border-radius:8px;text-align:center;transition:var(--transition);}
+.icon-option:hover{background:var(--c-accent2);border-color:var(--c-accent);}
+
+/* COLOR SWATCHES */
+.color-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.color-swatch{width:26px;height:26px;border-radius:6px;cursor:pointer;border:2px solid transparent;transition:var(--transition);}
+.color-swatch.active{border-color:var(--c-accent);transform:scale(1.2);}
+
+/* TOAST */
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(60px);
+  background:#1f2937;color:#fff;padding:10px 22px;border-radius:99px;font-size:13px;
+  font-weight:600;z-index:9000;pointer-events:none;transition:transform .3s ease,opacity .3s ease;opacity:0;}
+#toast.show{transform:translateX(-50%) translateY(0);opacity:1;}
+
+/* SEPARATOR */
+.sep{height:1px;background:var(--c-border);margin:6px 0;}
+
+/* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   RESPONSIVE / MOBILE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
+@media(max-width:700px){
+  #sidebar{position:fixed;right:0;top:var(--header-h);height:calc(100dvh - var(--header-h));
+    transform:translateX(100%);z-index:500;box-shadow:-4px 0 20px rgba(0,0,0,.2);}
+  #sidebar.open{transform:translateX(0);}
+  .app-title{font-size:.85rem;}
+  #statsBar{display:none!important;}
+  #floorTabs{max-width:160px;}
+}
+@media print{
+  #header,#sidebar{display:none!important;}
+  #canvasWrap{background:white!important;}
+  #floorCanvas{box-shadow:none!important;transform:none!important;}
+}
+</style>
+</head>
+<body class="manage-mode">
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ HEADER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<header id="header">
+  <div class="app-title" id="mainTitle">🍽 MATSUNOKI PRO</div>
+  <div class="sync-dot" id="syncDot" title="同期状態"></div>
+  <span id="syncLabel" style="font-size:11px;color:#9ca3af;white-space:nowrap;">接続中…</span>
+
+  <div id="statsBar">
+    <div class="stat-chip"><div class="stat-dot" style="background:#6b7280"></div><span id="stEmpty">0</span>席空</div>
+    <div class="stat-chip"><div class="stat-dot" style="background:var(--c-occupied)"></div><span id="stOccupied">0</span>使用中</div>
+    <div class="stat-chip"><div class="stat-dot" style="background:var(--c-reserved)"></div><span id="stReserved">0</span>予約</div>
+    <div class="stat-chip"><div class="stat-dot" style="background:var(--c-waiting)"></div><span id="stWaiting">0</span>まもなく</div>
   </div>
+
+  <div class="spacer"></div>
+
+  <div id="floorTabs"></div>
+
+  <button class="hbtn" id="themeBtn" title="ダーク/ライト切替">🌙</button>
+  <button class="hbtn" id="fsBtn" title="全画面">⛶</button>
+  <button class="hbtn manage-only" id="resetBtn">🏠 リセット</button>
+  <button class="hbtn" id="modeBtn">🔨 編集</button>
+  <button class="hbtn edit-only" style="background:#14532d;color:#bbf7d0;" id="addSeatBtn">＋ 席</button>
+  <button class="hbtn edit-only" style="background:#7f1d1d;color:#fecaca;" id="addWallBtn">＋ 壁</button>
+  <button class="hbtn edit-only" id="addIconBtn">🎨</button>
+  <button class="hbtn edit-only success" id="addFloorBtn">＋ FL</button>
+  <button class="hbtn edit-only danger" id="delFloorBtn">－ FL</button>
+  <button class="hbtn edit-only primary" id="saveHomeBtn">💾 保存</button>
+  <button class="hbtn" id="sbToggleBtn" style="display:none">☰</button>
 </header>
 
-<div class="main">
-  <div id="canvasContainer">
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ MAIN ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+<div id="main">
+  <div id="canvasWrap">
     <div id="floorCanvas">
-      <div id="guideV" class="guide guide-v"></div>
-      <div id="guideH" class="guide guide-h"></div>
-      <div id="selectionBox"></div>
+      <div id="gV" class="guide"></div>
+      <div id="gH" class="guide"></div>
+      <div id="selBox"></div>
     </div>
-    <div id="publicLegend">
-       <div class="legend-item"><div class="legend-color" style="background:var(--seat-gray);"></div>空席</div>
-       <div class="legend-item"><div class="legend-color" style="background:var(--success);"></div>使用中</div>
-       <div class="legend-item"><div class="legend-color" style="background:#f59e0b;"></div>まもなく空き</div>
-       <div class="legend-item"><div class="legend-color" style="background:#3b82f6;"></div>予約済</div>
+    <!-- 公開モード: 凡例 -->
+    <div id="pubLegend">
+      <div class="leg-item"><div class="leg-dot" style="background:var(--c-seat);border:1px solid #aaa;"></div>空席</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--c-occupied);"></div>使用中</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--c-waiting);"></div>まもなく空き</div>
+      <div class="leg-item"><div class="leg-dot" style="background:var(--c-reserved);"></div>予約済</div>
     </div>
-  </div>
-
-  <div class="sidebar">
-    <div id="settingsArea">
-      <div class="history-toolbar" id="historyGroup" style="display:none">
-        <button id="undoBtn" class="history-btn">↩️ 戻す</button>
-        <button id="redoBtn" class="history-btn">↪️ 進む</button>
-      </div>
-      <div id="actionGroup" style="display:none; margin-bottom: 20px;">
-        <h3>団体席操作</h3>
-        <button id="dockBtn" class="action-btn">🔗 選択席をドッキング</button>
-        <button id="undockBtn" class="action-btn secondary">🔓 連結解除</button>
-      </div>
-      
-      <div id="editGroup" style="display:none; width: 100%;">
-        <h3>パーツ編集</h3>
-        <div id="propPanel" style="display:flex; flex-direction:column; gap:12px;">
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <label style="margin:0; font-size:12px; font-weight:bold; color:#6b7280;">ラベル / 席番号</label>
-            <input type="text" id="propName" style="width:100%; box-sizing:border-box; padding:8px; border:1px solid #d1d5db; border-radius:6px; margin:0;">
-          </div>
-          <div id="propMemoArea" style="display:none; flex-direction:column; gap:4px;">
-            <label style="margin:0; font-size:12px; font-weight:bold; color:#6b7280;">予約メモ</label>
-            <input type="text" id="propMemo" style="width:100%; box-sizing:border-box; padding:8px; border:1px solid #d1d5db; border-radius:6px; margin:0;">
-          </div>
-          <div style="display:flex; flex-direction:column; gap:4px;">
-            <label style="margin:0; font-size:12px; font-weight:bold; color:#6b7280;">警告タイマー (分)</label>
-            <input type="number" id="propWarningTime" style="width:100%; box-sizing:border-box; padding:8px; border:1px solid #d1d5db; border-radius:6px; margin:0;">
-          </div>
-          <button id="delBtn" class="danger-btn" style="margin-top:8px;">削除</button>
+    <!-- 公開モード: 統計 -->
+    <div id="pubStats">
+      <div class="pub-stat-grid">
+        <div class="pub-stat-item">
+          <div class="pub-stat-num" id="ps-empty" style="color:#6b7280">-</div>
+          <div class="pub-stat-lbl">空席</div>
+        </div>
+        <div class="pub-stat-item">
+          <div class="pub-stat-num" id="ps-occ" style="color:var(--c-occupied)">-</div>
+          <div class="pub-stat-lbl">使用中</div>
+        </div>
+        <div class="pub-stat-item">
+          <div class="pub-stat-num" id="ps-res" style="color:var(--c-reserved)">-</div>
+          <div class="pub-stat-lbl">予約</div>
+        </div>
+        <div class="pub-stat-item">
+          <div class="pub-stat-num" id="ps-wait" style="color:var(--c-waiting)">-</div>
+          <div class="pub-stat-lbl">まもなく空</div>
         </div>
       </div>
-
-      <div id="noSelect" style="color:#9ca3af; text-align:center; margin-top:30px;">背景ドラッグで<br>複数の席を囲めます</div>
-      <div id="clearSeatsArea" style="margin-top:auto; display:none;"><button id="clearSeatsBtn" style="width:100%; background:#6b7280; color:white; padding:10px; border-radius:6px; font-size:12px; border:none; cursor:pointer;">🚨 全席空席リセット</button></div>
     </div>
-    <div id="hintArea" style="font-size:11px; color:#9ca3af; margin-top:20px;"></div>
-    <button id="publicLinkBtn" style="width:100%; background:#3b82f6; color:white; padding:12px; border-radius:6px; font-size:13px; margin-top:auto; font-weight:bold; border:none; cursor:pointer;">🔗 外部公開ページ</button>
+  </div>
+
+  <!-- ━━━━━━━━━━━━━━━━ SIDEBAR ━━━━━━━━━━━━━━━━ -->
+  <aside id="sidebar">
+    <!-- 編集: パーツ編集 -->
+    <div class="sb-section edit-only" id="editPanel" style="display:none">
+      <div class="sb-title">パーツ編集</div>
+      <label class="form-label">ラベル / 席番号</label>
+      <input class="form-input" id="propName" type="text" placeholder="例: A-1">
+      <div id="propGuestArea" style="display:none">
+        <label class="form-label">ゲスト名</label>
+        <input class="form-input" id="propGuest" type="text" placeholder="山田 様">
+        <label class="form-label">人数</label>
+        <input class="form-input" id="propCount" type="number" min="1" placeholder="2">
+      </div>
+      <label class="form-label">メモ</label>
+      <input class="form-input" id="propMemo" type="text" placeholder="アレルギーなど">
+      <label class="form-label">警告タイマー (分)</label>
+      <input class="form-input" id="propWarning" type="number" min="1" max="999" placeholder="20">
+      <label class="form-label">席カラー</label>
+      <div class="color-row" id="colorRow"></div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="sb-btn" id="undoBtn" style="flex:1;text-align:center;">↩ 戻す</button>
+        <button class="sb-btn" id="redoBtn" style="flex:1;text-align:center;">↪ 進む</button>
+      </div>
+      <button class="sb-btn red" id="delBtn" style="margin-top:4px;">🗑 削除</button>
+    </div>
+
+    <!-- 編集: 一括操作 -->
+    <div class="sb-section edit-only" id="groupPanel" style="display:none">
+      <div class="sb-title">一括操作 (<span id="selCount">0</span>席選択)</div>
+      <button class="sb-btn blue" id="dockBtn">⛓ ドッキング配置</button>
+      <button class="sb-btn" id="undockBtn">🔓 ホームへ戻す</button>
+    </div>
+
+    <!-- 編集: フロア名 -->
+    <div class="sb-section edit-only" id="floorNameSection">
+      <div class="sb-title">現在のフロア名</div>
+      <input class="form-input" id="floorNameInput" type="text" placeholder="1階">
+    </div>
+
+    <!-- 管理: クイック操作 -->
+    <div class="sb-section manage-only" id="managePanel">
+      <div class="sb-title">クイック操作</div>
+      <button class="sb-btn green" id="clearAllBtn">🗑 全席 空席リセット</button>
+      <button class="sb-btn blue" id="exportBtn">📥 データ書き出し</button>
+      <button class="sb-btn" id="importBtn">📤 データ読み込み</button>
+      <button class="sb-btn" id="printBtn">🖨 印刷</button>
+      <div class="sep"></div>
+      <button class="sb-btn" id="pubLinkBtn">🔗 公開ページを開く</button>
+    </div>
+
+    <!-- 管理: 操作ガイド -->
+    <div class="sb-section manage-only">
+      <div class="sb-title">操作ガイド</div>
+      <div style="font-size:12px;line-height:2;color:var(--c-muted);">
+        <b style="color:var(--c-text)">タップ</b> → 状態を切替<br>
+        <b style="color:var(--c-text)">長押し / 右クリック</b> → 詳細入力<br>
+        <b style="color:var(--c-text)">背景ドラッグ</b> → 複数選択<br>
+        <b style="color:var(--c-text)">ピンチ</b> → ズーム<br>
+        <b style="color:var(--c-text)">Ctrl+Z / Y</b> → 元に戻す/やり直し<br>
+        <b style="color:var(--c-text)">Ctrl+A</b> → 全選択<br>
+        <b style="color:var(--c-text)">Delete</b> → 選択削除
+      </div>
+    </div>
+
+    <div style="margin-top:auto;padding:14px;">
+      <div id="lastSyncTime" style="font-size:11px;color:var(--c-muted);text-align:center;"></div>
+    </div>
+  </aside>
+</div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ MODALS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
+
+<!-- 席詳細モーダル -->
+<div class="modal-overlay" id="seatModal">
+  <div class="modal-box">
+    <div class="modal-title">🪑 <span id="seatModalTitle">席の操作</span></div>
+
+    <div class="status-selector">
+      <button class="st-btn st-empty"    id="smEmpty">⬜ 空席</button>
+      <button class="st-btn st-occupied" id="smOccupied">✅ 使用中</button>
+      <button class="st-btn st-waiting"  id="smWaiting">⏳ まもなく空き</button>
+      <button class="st-btn st-reserved" id="smReserved">📋 予約</button>
+    </div>
+
+    <div id="smReservedFields" style="display:none;flex-direction:column;gap:4px;">
+      <label class="form-label">ゲスト名</label>
+      <input class="form-input" id="smGuestName" type="text" placeholder="山田 様">
+      <label class="form-label">人数</label>
+      <input class="form-input" id="smGuestCount" type="number" min="1" placeholder="2">
+      <label class="form-label">予約メモ</label>
+      <input class="form-input" id="smMemo" type="text" placeholder="アレルギーなど">
+    </div>
+
+    <div id="smCurrentInfo" style="display:none">
+      <div class="sep"></div>
+      <div style="font-size:12px;margin-top:8px;">
+        <div class="info-row">着席時刻 <span class="info-val" id="smSinceTime">-</span></div>
+        <div class="info-row">経過時間 <span class="info-val" id="smElapsed">-</span></div>
+        <div class="info-row">警告まで <span class="info-val" id="smRemaining">-</span></div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" id="smCancel">閉じる</button>
+      <button class="btn-ok" id="smApply">✓ 適用</button>
+    </div>
   </div>
 </div>
 
-<div id="iconModal">
-  <div class="modal-content">
-    <h3>アイコンを選択</h3>
+<!-- アイコン選択モーダル -->
+<div class="modal-overlay" id="iconModal">
+  <div class="modal-box">
+    <div class="modal-title">🎨 アイコン追加</div>
     <div class="icon-grid" id="iconGrid"></div>
-    <button onclick="closeIconModal()" style="width:100%; padding:10px; border-radius:6px;">キャンセル</button>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="iconCancel">キャンセル</button>
+    </div>
   </div>
 </div>
 
+<!-- データ読み込みモーダル -->
+<div class="modal-overlay" id="importModal">
+  <div class="modal-box">
+    <div class="modal-title">📤 データ読み込み</div>
+    <p style="font-size:12px;color:var(--c-muted);margin-bottom:12px;">以前エクスポートしたJSONを貼り付けてください</p>
+    <textarea id="importText" class="form-input" rows="8" placeholder='{"version":2,"floors":...}'></textarea>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="importCancel">キャンセル</button>
+      <button class="btn-ok" id="importApply">読み込む</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+     APPLICATION SCRIPT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <script>
-const urlParams = new URLSearchParams(window.location.search);
-const isPublicMode = urlParams.get('public') === 'true';
-let socket;
+(function(){
+'use strict';
 
-let state = {
-  isEditMode: false, currentFloor: '1F',
-  floors: { '1F': { name: '1階', items: {}, nextId: 1 }, '2F': { name: '2階', items: {}, nextId: 1 }, '3F': { name: '3階', items: {}, nextId: 1 } },
-  selectedIds: [], history: [], historyIndex: -1,
-  lastUpdate: 0
+/* ═══════════════════════════════════════
+   CONFIG & CONSTANTS
+═══════════════════════════════════════ */
+var POLL_MS   = 3000;
+var TIMER_MS  = 1000;
+var LS_KEY    = 'matsunoki_v2';
+var LS_THEME  = 'matsunoki_theme';
+var CW        = 1200;
+var CH        = 800;
+var GRID      = 10;
+
+var SEAT_COLORS = [
+  {label:'デフォルト', value:''},
+  {label:'赤',   value:'#fca5a5'},
+  {label:'橙',   value:'#fed7aa'},
+  {label:'黄',   value:'#fef08a'},
+  {label:'緑',   value:'#bbf7d0'},
+  {label:'青',   value:'#bfdbfe'},
+  {label:'紫',   value:'#e9d5ff'},
+  {label:'ピンク', value:'#fbcfe8'},
+  {label:'濃紺', value:'#1e3a5f'},
+  {label:'白',   value:'#f9fafb'},
+];
+
+var ICONS = ["🌿","🍀","🌵","🌴","🌲","🌳","🎋","🌸","🌼","🌻","🍁","🍃",
+  "🪑","🛋️","🪟","💡","🚪","🚻","💰","🍳","🍴","🍵","🍶","🚭","📶",
+  "🚲","🎵","🎸","📱","💻","🎤","🔊","🌈","⭐","🎉","❄️","🔥","💎",
+  "🎲","♟️","🎯","🎪","🏮","🧧","🎐","🎑","🏯","⛩️"];
+
+/* ═══════════════════════════════════════
+   STATE
+═══════════════════════════════════════ */
+var UP = new URLSearchParams(location.search);
+var isPublic = UP.get('public') === 'true';
+
+var state = {
+  version: 2, currentFloor: '1F', lastUpdate: 0,
+  floors: {
+    '1F': { name:'1階', nextId:1, items:{} },
+    '2F': { name:'2階', nextId:1, items:{} }
+  }
 };
 
-const iconSets = ["🌿","🍀","🌵","🌴","🌲","🌳","🎋","🌸","🌼","🌻","🍁","🍃","🪑","🛋️","🪟","💡","🚪","🚻","💰","🍳","🍴","🍵","🍶","🚭","📶","🚲"];
-let currentScale = 1;
+var isEditMode  = false;
+var selectedIds = [];
+var histBuf     = [];
+var histIdx     = -1;
+var curScale    = 1;
+var panX = 0, panY = 0;
+var seatModalId = null;
+var pendingStatus = null;
+var pollTimer   = null;
+var lastServerTs = 0;
 
-const canvas = document.getElementById('floorCanvas');
-const container = document.getElementById('canvasContainer');
-const floorBtnArea = document.getElementById('floorBtnArea');
-const floorNameEdit = document.getElementById('floorNameEdit');
-const saveStatus = document.getElementById('saveStatus');
-const selectionBox = document.getElementById('selectionBox');
-const guideV = document.getElementById('guideV');
-const guideH = document.getElementById('guideH');
+/* ═══════════════════════════════════════
+   UTILITY
+═══════════════════════════════════════ */
+function deep(x){ return JSON.parse(JSON.stringify(x)); }
+function clamp(v,a,b){ return Math.min(Math.max(v,a),b); }
+function snap(v){ return Math.round(v/GRID)*GRID; }
+function fmtTime(ms){
+  if(ms<0) ms=0;
+  var m=Math.floor(ms/60000), s=Math.floor((ms%60000)/1000);
+  return m+'分'+('0'+s).slice(-2)+'秒';
+}
+function fmtClock(ts){
+  if(!ts) return '-';
+  var d=new Date(ts);
+  return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+}
 
-function initSocket() {
-  socket = io();
-  socket.on('dataChanged', (newData) => {
-    const localStr = localStorage.getItem('matsunoki_state');
-    if (!isPublicMode && localStr) {
-      try {
-        const localData = JSON.parse(localStr);
-        const serverTime = newData.lastUpdate || 0;
-        const localTime = localData.lastUpdate || 0;
-        if (localTime > serverTime + 5000) {
-          console.log("サーバーのリセットを検知しました。ローカルバックアップから復旧します。");
-          state = localData;
-          autoSave(); 
-          render();
-          return;
+var toastTm;
+function toast(msg, dur){
+  dur = dur||2400;
+  var el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastTm);
+  toastTm=setTimeout(function(){ el.classList.remove('show'); }, dur);
+}
+
+function openModal(id){ document.getElementById(id).classList.add('open'); }
+function closeModal(id){ document.getElementById(id).classList.remove('open'); }
+
+function curFloor(){ return state.floors[state.currentFloor]; }
+function curItems(){ return curFloor().items; }
+
+/* ═══════════════════════════════════════
+   THEME
+═══════════════════════════════════════ */
+var themeBtn = document.getElementById('themeBtn');
+function applyTheme(dark){
+  document.body.classList.toggle('dark', dark);
+  themeBtn.textContent = dark ? '☀️' : '🌙';
+  try{ localStorage.setItem(LS_THEME, dark?'dark':'light'); }catch(e){}
+}
+try{ applyTheme(localStorage.getItem(LS_THEME)==='dark'); }catch(e){}
+themeBtn.onclick = function(){ applyTheme(!document.body.classList.contains('dark')); };
+
+/* ═══════════════════════════════════════
+   BODY MODE
+═══════════════════════════════════════ */
+function setBodyMode(mode){
+  var cls = document.body.className
+    .split(' ').filter(function(c){ return !/(edit|manage|public)-mode/.test(c); });
+  cls.push(mode+'-mode');
+  if(document.body.classList.contains('dark')) cls.push('dark');
+  document.body.className = cls.join(' ').trim();
+}
+
+/* ═══════════════════════════════════════
+   SYNC / SERVER
+═══════════════════════════════════════ */
+var syncDot   = document.getElementById('syncDot');
+var syncLabel = document.getElementById('syncLabel');
+
+function setSyncState(s){
+  syncDot.className = 'sync-dot' + (s==='ok'?'':s==='syncing'?' syncing':' error');
+  syncLabel.textContent = s==='ok'?'同期済み':s==='syncing'?'同期中…':'オフライン';
+}
+
+async function loadFromServer(){
+  try{
+    setSyncState('syncing');
+    var r = await fetch('/api/state');
+    if(!r.ok) throw new Error(r.status);
+    var data = await r.json();
+    if(data.lastUpdate && data.lastUpdate > lastServerTs){
+      lastServerTs = data.lastUpdate;
+      if(data.floors){
+        // 自分よりサーバーが新しければマージ
+        if(data.lastUpdate >= (state.lastUpdate||0) - 1500){
+          state.floors = data.floors;
+          if(data.currentFloor && state.floors[data.currentFloor])
+            state.currentFloor = data.currentFloor;
+          state.lastUpdate = data.lastUpdate;
+          saveLocal();
+          renderAll(); updateStats(); renderFloorTabs();
         }
-      } catch(e) {}
+      }
     }
-
-    state.floors = newData.floors;
-    if (newData.lastUpdate) state.lastUpdate = newData.lastUpdate;
-    if (!isPublicMode) localStorage.setItem('matsunoki_state', JSON.stringify(state));
-
-    if (state.history.length === 0) pushHistory();
-    updateFloorButtons();
-    render();
-    saveStatus.textContent = '同期済み';
-  });
-}
-
-function autoSave() {
-  if (isPublicMode || !socket) return;
-  saveStatus.textContent = '同期中...';
-  state.lastUpdate = Date.now();
-  localStorage.setItem('matsunoki_state', JSON.stringify(state));
-  socket.emit('updateData', state);
-}
-
-const themeBtn = document.getElementById('themeBtn');
-if (localStorage.getItem('matsunoki_theme') === 'dark') document.body.classList.add('dark-mode'), themeBtn.textContent = '☀️';
-themeBtn.onclick = () => { document.body.classList.toggle('dark-mode'); const d = document.body.classList.contains('dark-mode'); themeBtn.textContent = d ? '☀️' : '🌙'; localStorage.setItem('matsunoki_theme', d ? 'dark' : 'light'); };
-
-function pushHistory() { if(isPublicMode) return; if (state.historyIndex < state.history.length - 1) state.history = state.history.slice(0, state.historyIndex + 1); state.history.push(JSON.parse(JSON.stringify(state.floors))); if (state.history.length > 30) state.history.shift(); state.historyIndex = state.history.length - 1; updateHistoryButtons(); }
-function undo() { if (state.historyIndex > 0) { state.historyIndex--; state.floors = JSON.parse(JSON.stringify(state.history[state.historyIndex])); render(); updateHistoryButtons(); autoSave(); } }
-function redo() { if (state.historyIndex < state.history.length - 1) { state.historyIndex++; state.floors = JSON.parse(JSON.stringify(state.history[state.historyIndex])); render(); updateHistoryButtons(); autoSave(); } }
-function updateHistoryButtons() { const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn'); if(u) u.disabled = state.historyIndex <= 0; if(r) r.disabled = state.historyIndex >= state.history.length - 1; }
-
-async function init() {
-  initSocket();
-  const ig = document.getElementById('iconGrid'); iconSets.forEach(icon => { const d = document.createElement('div'); d.className = 'icon-option'; d.textContent = icon; d.onclick = () => { addItem('icon-item', '', 60, 60, icon); closeIconModal(); }; ig.appendChild(d); });
-  if(isPublicMode) { document.getElementById('mainTitle').textContent = '松乃木飯店 - 空席状況'; document.getElementById('publicLegend').style.display = 'flex'; }
-  updateToolbarVisibility(); updateFloorButtons(); render();
-  window.addEventListener('resize', resizeCanvas); setTimeout(resizeCanvas, 100);
-}
-
-function updateToolbarVisibility() {
-  if (isPublicMode) { document.body.className = "mode-public"; return; }
-  const d = state.isEditMode ? 'flex' : 'none';
-  ['addSeatBtn','addWallBtn','addIconBtn','saveBtn','floorNameEdit','historyGroup','editGroup','clearSeatsArea'].forEach(id => { const el = document.getElementById(id); if(el) el.style.display = (id==='editGroup' || id==='historyGroup') && !state.isEditMode ? 'none' : (state.isEditMode ? (id==='addSeatBtn'||id==='addWallBtn'||id==='addIconBtn'||id==='saveBtn'||id==='floorNameEdit' ? 'inline-block' : 'flex') : 'none'); });
-  document.getElementById('resetLayoutBtn').style.display = (!state.isEditMode && !isPublicMode) ? 'inline-block' : 'none';
-  document.getElementById('hintArea').innerHTML = state.isEditMode ? "<b>一括選択:</b> 背景ドラッグ<br><b>移動:</b> 10pxグリッド吸着" : "<b>監理:</b> 席タップで状態切替<br>席ドラッグで連結可";
-  document.body.className = state.isEditMode ? "" : "mode-manage";
-  if (!state.isEditMode) { document.getElementById('editGroup').style.display = 'none'; document.getElementById('actionGroup').style.display = 'none'; }
-}
-
-function updateFloorButtons() {
-  floorBtnArea.innerHTML = '';
-  Object.keys(state.floors).forEach(id => {
-    const b = document.createElement('button'); b.className = `floor-btn ${state.currentFloor === id ? 'active' : ''}`;
-    b.textContent = state.floors[id].name || id;
-    b.onclick = () => { state.currentFloor = id; state.selectedIds = []; render(); updateFloorButtons(); if(state.isEditMode) floorNameEdit.value = state.floors[id].name; };
-    floorBtnArea.appendChild(b);
-  });
-}
-
-function resizeCanvas() {
-  const scale = Math.min((container.clientWidth - 40) / 1200, (container.clientHeight - 40) / 800);
-  currentScale = scale > 1 ? 1 : scale;
-  canvas.style.transform = `scale(${currentScale})`;
-}
-
-function render() {
-  Array.from(canvas.children).forEach(c => {
-    if (c.id !== 'guideV' && c.id !== 'guideH' && c.id !== 'selectionBox') c.remove();
-  });
-  
-  const items = state.floors[state.currentFloor].items;
-  const itemArray = Object.values(items);
-  itemArray.forEach(it => {
-    const el = document.createElement('div'); el.id = it.id;
-    el.className = `item ${it.type} ${it.status || ''} ${state.selectedIds.includes(it.id) ? 'item-selected' : ''}`;
-    el.style.cssText = `left:${it.x}px; top:${it.y}px; width:${it.w}px; height:${it.h}px; z-index:${it.type==='wall'?10:20};`;
-    if (it.type === 'icon-item') {
-      const emoji = document.createElement('span'); emoji.className = 'icon-emoji'; emoji.textContent = it.name || '';
-      emoji.style.fontSize = (Math.min(it.w, it.h) * 0.8) + 'px'; el.appendChild(emoji);
-    } else if (it.type !== 'wall') {
-      const n = document.createElement('span'); n.className = 'item-name'; n.textContent = it.name || ''; el.appendChild(n);
-    }
-    if (it.type === 'seat') {
-      if (it.status === 'reserved' && it.memo && !isPublicMode) { const m = document.createElement('div'); m.className = 'memo-display'; m.textContent = it.memo; el.appendChild(m); }
-      const t = document.createElement('span'); t.className = 'time-display'; el.appendChild(t);
-    }
-    if (state.isEditMode) { const r = document.createElement('div'); r.className = 'resizer'; el.appendChild(r); }
-    if (!isPublicMode) setupDrag(el, it.id); 
-    canvas.appendChild(el);
-  });
-  
-  const allSeats = itemArray.filter(it => it.type === 'seat');
-  for (let i = 0; i < allSeats.length; i++) {
-    for (let j = i + 1; j < allSeats.length; j++) {
-      const a = allSeats[i], b = allSeats[j];
-      let c = null;
-      if (a.x === b.x && a.w === b.w && a.y + a.h === b.y) c = { x: a.x + a.w/2-12, y: a.y + a.h-8, w: 24, h: 16 };
-      else if (a.x === b.x && a.w === b.w && b.y + b.h === a.y) c = { x: a.x + a.w/2-12, y: b.y + b.h-8, w: 24, h: 16 };
-      else if (a.y === b.y && a.h === b.h && a.x + a.w === b.x) c = { x: a.x + a.w-8, y: a.y + a.h/2-12, w: 16, h: 24 };
-      else if (a.y === b.y && a.h === b.h && b.x + b.w === a.x) c = { x: b.x + b.w-8, y: a.y + a.h/2-12, w: 16, h: 24 };
-      if (c) { const d = document.createElement('div'); d.className = 'dock-connector'; d.style.cssText = `left:${c.x}px; top:${c.y}px; width:${c.w}px; height:${c.h}px;`; canvas.appendChild(d); }
-    }
+    setSyncState('ok');
+    updateSyncTime();
+  }catch(e){
+    setSyncState('error');
   }
 }
 
-document.getElementById('resetLayoutBtn').onclick = () => { if(!confirm('全ての席を元の定位置に戻しますか？')) return; Object.values(state.floors[state.currentFloor].items).forEach(it => { if(it.homeX !== undefined) it.x = it.homeX, it.y = it.homeY; }); render(); autoSave(); };
-
-function selectItems(ids) {
-  if(isPublicMode) return; state.selectedIds = ids;
-  document.body.classList.toggle('sidebar-open', ids.length > 0);
-  document.getElementById('noSelect').style.display = ids.length > 0 ? 'none' : 'block';
-  document.getElementById('actionGroup').style.display = ids.length > 1 ? 'block' : 'none';
-  if (state.isEditMode) document.getElementById('editGroup').style.display = ids.length === 1 ? 'flex' : 'none';
-  if (ids.length === 1) {
-    const it = state.floors[state.currentFloor].items[ids[0]];
-    document.getElementById('propName').value = it.name || '';
-    document.getElementById('propMemoArea').style.display = (it.type==='seat' && it.status==='reserved') ? 'flex' : 'none';
-    document.getElementById('propMemo').value = it.memo || '';
-    document.getElementById('propWarningTime').value = it.warningTime || 20;
-  }
-  render();
-}
-
-document.getElementById('dockBtn').onclick = () => {
-  if (state.selectedIds.length < 2) return;
-  const items = state.floors[state.currentFloor].items;
-  const selectedSeats = state.selectedIds.map(id => items[id]).filter(it => it.type === 'seat');
-  if (selectedSeats.length < 2) return;
-  const minX = Math.min(...selectedSeats.map(s => s.x)), maxX = Math.max(...selectedSeats.map(s => s.x + s.w));
-  const minY = Math.min(...selectedSeats.map(s => s.y)), maxY = Math.max(...selectedSeats.map(s => s.y + s.h));
-  if ((maxX - minX) >= (maxY - minY)) {
-    selectedSeats.sort((a, b) => a.x - b.x); let nX = selectedSeats[0].x + selectedSeats[0].w;
-    for (let i = 1; i < selectedSeats.length; i++) { selectedSeats[i].x = nX; selectedSeats[i].y = selectedSeats[0].y; nX += selectedSeats[i].w; }
-  } else {
-    selectedSeats.sort((a, b) => a.y - b.y); let nY = selectedSeats[0].y + selectedSeats[0].h;
-    for (let i = 1; i < selectedSeats.length; i++) { selectedSeats[i].y = nY; selectedSeats[i].x = selectedSeats[0].x; nY += selectedSeats[i].h; }
-  }
-  if (state.isEditMode) pushHistory(); render(); autoSave();
-};
-
-document.getElementById('undockBtn').onclick = () => {
-  state.selectedIds.forEach(id => { const it = state.floors[state.currentFloor].items[id]; if (it.homeX !== undefined) it.x = it.homeX, it.y = it.homeY; });
-  if (state.isEditMode) pushHistory(); render(); autoSave();
-};
-
-function setupDrag(el, id) {
-  let isDragging = false, isResizing = false, sx, sy, startPos = new Map(), hasMoved = false;
-  const onDown = (e) => {
-    const it = state.floors[state.currentFloor].items[id]; if (!state.isEditMode && it.type !== 'seat') return;
-    e.stopPropagation(); if (state.isEditMode && !state.selectedIds.includes(id)) selectItems([id]);
-    sx = e.clientX; sy = e.clientY; hasMoved = false;
-    if (e.target.classList.contains('resizer') && state.isEditMode) isResizing = true; else isDragging = true;
-    const targetIds = (state.isEditMode && state.selectedIds.length > 1) ? state.selectedIds : [id];
-    targetIds.forEach(sid => { const sit = state.floors[state.currentFloor].items[sid]; startPos.set(sid, { x: sit.x, y: sit.y, w: sit.w, h: sit.h }); document.getElementById(sid).classList.add('item-dragging'); });
-    el.setPointerCapture(e.pointerId); el.addEventListener('pointermove', onMove); el.addEventListener('pointerup', onUp);
-  };
-  const onMove = (e) => {
-    const dx = (e.clientX - sx) / currentScale, dy = (e.clientY - sy) / currentScale; if (Math.abs(dx) > 3 || Math.abs(dy) > 3) hasMoved = true;
-    if (isResizing) {
-      const it = state.floors[state.currentFloor].items[id], s = startPos.get(id);
-      it.w = Math.round(Math.max(20, Math.min(s.w + dx, 1200 - it.x)) / 10) * 10;
-      it.h = Math.round(Math.max(20, Math.min(s.h + dy, 800 - it.y)) / 10) * 10;
-      el.style.width = it.w + 'px'; el.style.height = it.h + 'px';
-      if(it.type === 'icon-item') el.querySelector('.icon-emoji').style.fontSize = (Math.min(it.w, it.h) * 0.8) + 'px';
-    } else if (isDragging) {
-      startPos.forEach((s, sid) => {
-        const sit = state.floors[state.currentFloor].items[sid];
-        sit.x = Math.max(0, Math.min(Math.round((s.x + dx) / 10) * 10, 1200 - sit.w));
-        sit.y = Math.max(0, Math.min(Math.round((s.y + dy) / 10) * 10, 800 - sit.h));
-        const sel = document.getElementById(sid); if(sel) { sel.style.left = sit.x + 'px'; sel.style.top = sit.y + 'px'; }
-      });
-      if(state.isEditMode && startPos.size === 1) showGuides(state.floors[state.currentFloor].items[id]);
-    }
-  };
-  const onUp = (e) => {
-    isDragging = isResizing = false; guideV.style.display = guideH.style.display = 'none';
-    document.querySelectorAll('.item-dragging').forEach(t => t.classList.remove('item-dragging'));
-    el.releasePointerCapture(e.pointerId); el.removeEventListener('pointermove', onMove); el.removeEventListener('pointerup', onUp);
-    if (!hasMoved) { if (!state.isEditMode) toggleSeat(id); else selectItems([id]); }
-    else { if (state.isEditMode) pushHistory(); render(); autoSave(); }
-  };
-  el.addEventListener('pointerdown', onDown);
-}
-
-function showGuides(target) {
-  let gv = false, gh = false;
-  Object.values(state.floors[state.currentFloor].items).forEach(it => {
-    if (it.id === target.id) return;
-    const tCx = target.x + target.w / 2, tCy = target.y + target.h / 2;
-    const iCx = it.x + it.w / 2, iCy = it.y + it.h / 2;
-    if (Math.abs(it.x - target.x) < 2) { guideV.style.left = it.x + 'px'; gv = true; }
-    else if (Math.abs(it.x + it.w - (target.x + target.w)) < 2) { guideV.style.left = (it.x + it.w) + 'px'; gv = true; }
-    else if (Math.abs(iCx - tCx) < 2) { guideV.style.left = iCx + 'px'; gv = true; }
-    if (Math.abs(it.y - target.y) < 2) { guideH.style.top = it.y + 'px'; gh = true; }
-    else if (Math.abs(it.y + it.h - (target.y + target.h)) < 2) { guideH.style.top = (it.y + it.h) + 'px'; gh = true; }
-    else if (Math.abs(iCy - tCy) < 2) { guideH.style.top = iCy + 'px'; gh = true; }
-  });
-  guideV.style.display = gv ? 'block' : 'none'; guideH.style.display = gh ? 'block' : 'none';
-}
-
-let onSelectMove, onSelectUp;
-container.addEventListener('pointerdown', (e) => {
-  if (isPublicMode || (e.target !== container && e.target !== canvas)) return;
-  const r = canvas.getBoundingClientRect(); 
-  let bx = (e.clientX - r.left) / currentScale, by = (e.clientY - r.top) / currentScale;
-  bx = Math.max(0, Math.min(bx, 1200)); by = Math.max(0, Math.min(by, 800));
-  selectionBox.style.cssText = `display:block; left:${bx}px; top:${by}px; width:0; height:0;`;
-  
-  onSelectMove = (ev) => {
-    let cx = (ev.clientX - r.left) / currentScale, cy = (ev.clientY - r.top) / currentScale;
-    cx = Math.max(0, Math.min(cx, 1200)); cy = Math.max(0, Math.min(cy, 800));
-    selectionBox.style.left = Math.min(bx, cx) + 'px'; selectionBox.style.top = Math.min(by, cy) + 'px';
-    selectionBox.style.width = Math.abs(cx - bx) + 'px'; selectionBox.style.height = Math.abs(cy - by) + 'px';
-  };
-  onSelectUp = () => {
-    const left = parseFloat(selectionBox.style.left), top = parseFloat(selectionBox.style.top);
-    const right = left + parseFloat(selectionBox.style.width), bottom = top + parseFloat(selectionBox.style.height);
-    const ids = [];
-    Object.values(state.floors[state.currentFloor].items).forEach(it => {
-      if (!(it.x + it.w < left || it.x > right || it.y + it.h < top || it.y > bottom)) ids.push(it.id);
+async function pushToServer(){
+  try{
+    setSyncState('syncing');
+    state.lastUpdate = Date.now();
+    saveLocal();
+    var r = await fetch('/api/state',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(state)
     });
-    selectionBox.style.display = 'none'; selectItems(ids);
-    window.removeEventListener('pointermove', onSelectMove); window.removeEventListener('pointerup', onSelectUp);
+    if(!r.ok) throw new Error(r.status);
+    var res = await r.json();
+    if(res.lastUpdate){ state.lastUpdate=res.lastUpdate; lastServerTs=res.lastUpdate; }
+    setSyncState('ok');
+    updateSyncTime();
+  }catch(e){
+    setSyncState('error');
+    toast('⚠ サーバー保存失敗（ローカルは保存済）');
+  }
+}
+
+function saveLocal(){
+  try{ localStorage.setItem(LS_KEY, JSON.stringify(state)); }catch(e){}
+}
+
+function updateSyncTime(){
+  var el=document.getElementById('lastSyncTime');
+  if(el) el.textContent='最終同期: '+new Date().toLocaleTimeString('ja-JP');
+}
+
+function startPolling(){
+  if(pollTimer) clearInterval(pollTimer);
+  pollTimer = setInterval(loadFromServer, POLL_MS);
+}
+
+/* ═══════════════════════════════════════
+   HISTORY
+═══════════════════════════════════════ */
+function pushHistory(){
+  if(isPublic) return;
+  if(histIdx < histBuf.length-1) histBuf = histBuf.slice(0,histIdx+1);
+  histBuf.push(deep(state.floors));
+  if(histBuf.length>50) histBuf.shift();
+  histIdx = histBuf.length-1;
+  updateHistBtns();
+}
+function undo(){
+  if(histIdx<=0) return;
+  histIdx--;
+  state.floors = deep(histBuf[histIdx]);
+  renderAll(); renderFloorTabs(); pushToServer(); updateHistBtns();
+}
+function redo(){
+  if(histIdx>=histBuf.length-1) return;
+  histIdx++;
+  state.floors = deep(histBuf[histIdx]);
+  renderAll(); renderFloorTabs(); pushToServer(); updateHistBtns();
+}
+function updateHistBtns(){
+  var u=document.getElementById('undoBtn'), r=document.getElementById('redoBtn');
+  if(u){ u.disabled=histIdx<=0; u.style.opacity=histIdx<=0?.4:1; }
+  if(r){ r.disabled=histIdx>=histBuf.length-1; r.style.opacity=histIdx>=histBuf.length-1?.4:1; }
+}
+
+/* ═══════════════════════════════════════
+   STATS
+═══════════════════════════════════════ */
+function updateStats(){
+  var empty=0,occ=0,res=0,wait=0;
+  var items=Object.values(curItems()).filter(function(it){ return it.type==='seat'; });
+  items.forEach(function(it){
+    if(!it.status) empty++;
+    else if(it.status==='occupied') occ++;
+    else if(it.status==='reserved') res++;
+    else if(it.status==='waiting')  wait++;
+  });
+  var set=function(id,v){ var e=document.getElementById(id); if(e) e.textContent=v; };
+  set('stEmpty',empty); set('stOccupied',occ); set('stReserved',res); set('stWaiting',wait);
+  set('ps-empty',empty); set('ps-occ',occ); set('ps-res',res); set('ps-wait',wait);
+}
+
+/* ═══════════════════════════════════════
+   FLOOR TABS
+═══════════════════════════════════════ */
+var floorTabs = document.getElementById('floorTabs');
+function renderFloorTabs(){
+  floorTabs.innerHTML='';
+  Object.keys(state.floors).forEach(function(id){
+    var fl = state.floors[id];
+    var b=document.createElement('button');
+    b.className='ftab'+(state.currentFloor===id?' active':'');
+    b.textContent=fl.name||id;
+    b.onclick=function(){
+      state.currentFloor=id; selectedIds=[];
+      renderFloorTabs(); renderAll(); updateStats();
+      var fi=document.getElementById('floorNameInput');
+      if(fi) fi.value=curFloor().name||'';
+    };
+    floorTabs.appendChild(b);
+  });
+  var fi=document.getElementById('floorNameInput');
+  if(fi) fi.value=curFloor().name||'';
+}
+
+/* ═══════════════════════════════════════
+   CANVAS TRANSFORM
+═══════════════════════════════════════ */
+var canvas     = document.getElementById('floorCanvas');
+var canvasWrap = document.getElementById('canvasWrap');
+
+function applyTransform(){
+  canvas.style.transform = 'translate('+panX+'px,'+panY+'px) scale('+curScale+')';
+  canvas.style.transformOrigin = 'center center';
+}
+
+function fitCanvas(){
+  curScale = Math.min(
+    (canvasWrap.clientWidth-40)/CW,
+    (canvasWrap.clientHeight-40)/CH,
+    1
+  );
+  panX=0; panY=0;
+  applyTransform();
+}
+
+/* Pinch & Pan */
+(function(){
+  var ptrMap=new Map(), initDist=0, initScale=1;
+  var isPanning=false, pSX=0,pSY=0, piX=0,piY=0;
+
+  canvasWrap.addEventListener('pointerdown', function(e){
+    ptrMap.set(e.pointerId,e);
+    if(ptrMap.size===2){
+      var pts=[...ptrMap.values()];
+      initDist=Math.hypot(pts[1].clientX-pts[0].clientX,pts[1].clientY-pts[0].clientY);
+      initScale=curScale; isPanning=false;
+    } else if(ptrMap.size===1 && (e.target===canvasWrap||e.target===canvas)){
+      isPanning=true; pSX=e.clientX; pSY=e.clientY; piX=panX; piY=panY;
+    }
+  });
+  canvasWrap.addEventListener('pointermove', function(e){
+    if(!ptrMap.has(e.pointerId)) return;
+    ptrMap.set(e.pointerId,e);
+    if(ptrMap.size===2){
+      var pts=[...ptrMap.values()];
+      var dist=Math.hypot(pts[1].clientX-pts[0].clientX,pts[1].clientY-pts[0].clientY);
+      curScale=clamp(initScale*(dist/initDist),0.15,3);
+      applyTransform();
+    } else if(isPanning && ptrMap.size===1){
+      panX=piX+(e.clientX-pSX); panY=piY+(e.clientY-pSY); applyTransform();
+    }
+  });
+  function endP(e){ ptrMap.delete(e.pointerId); if(ptrMap.size<2) isPanning=false; }
+  canvasWrap.addEventListener('pointerup',endP);
+  canvasWrap.addEventListener('pointercancel',endP);
+  canvasWrap.addEventListener('wheel', function(e){
+    e.preventDefault();
+    curScale=clamp(curScale*(e.deltaY>0?0.9:1.1),0.15,3);
+    applyTransform();
+  },{passive:false});
+})();
+
+/* ═══════════════════════════════════════
+   RENDER
+═══════════════════════════════════════ */
+function renderAll(){
+  Array.from(canvas.children).forEach(function(c){
+    if(c.id!=='gV'&&c.id!=='gH'&&c.id!=='selBox') c.remove();
+  });
+
+  var items = Object.values(curItems());
+  var walls  = items.filter(function(i){ return i.type==='wall'; });
+  var icons  = items.filter(function(i){ return i.type==='icon-item'; });
+  var seats  = items.filter(function(i){ return i.type==='seat'; });
+
+  walls.concat(icons).concat(seats).forEach(function(it){
+    canvas.appendChild(makeItemEl(it));
+  });
+
+  /* dock badges */
+  for(var i=0;i<seats.length;i++){
+    for(var j=i+1;j<seats.length;j++){
+      var badge = calcDock(seats[i],seats[j]);
+      if(badge){
+        var d=document.createElement('div');
+        d.className='dock-badge';
+        d.style.cssText='left:'+badge.x+'px;top:'+badge.y+'px;width:'+badge.w+'px;height:'+badge.h+'px;';
+        canvas.appendChild(d);
+      }
+    }
+  }
+  updateStats();
+  updateSidebarForSelection();
+}
+
+function makeItemEl(it){
+  var el=document.createElement('div');
+  var cls=['item',it.type];
+  if(it.status) cls.push(it.status);
+  if(selectedIds.indexOf(it.id)>=0) cls.push('item-selected');
+  el.id=it.id;
+  el.className=cls.join(' ');
+  el.style.cssText='left:'+it.x+'px;top:'+it.y+'px;width:'+it.w+'px;height:'+it.h+'px;';
+  if(it.color && it.type==='seat' && !it.status) el.style.background=it.color;
+
+  if(it.type==='icon-item'){
+    var sp=document.createElement('span');
+    sp.className='icon-emoji';
+    sp.textContent=it.name||'';
+    sp.style.fontSize=Math.min(it.w,it.h)*0.8+'px';
+    el.appendChild(sp);
+
+  } else if(it.type==='seat'){
+    var n=document.createElement('span');
+    n.className='lbl-name'; n.textContent=it.name||''; el.appendChild(n);
+    if(it.guestName){
+      var g=document.createElement('div'); g.className='lbl-guest';
+      g.textContent=it.guestName+(it.guestCount?' ('+it.guestCount+'名)':'');
+      el.appendChild(g);
+    }
+    if(it.memo && it.status==='reserved'){
+      var m=document.createElement('div'); m.className='lbl-memo'; m.textContent=it.memo;
+      el.appendChild(m);
+    }
+    var t=document.createElement('span'); t.className='lbl-time'; el.appendChild(t);
+
+  } else if(it.type!=='wall'){
+    var n2=document.createElement('span'); n2.className='lbl-name'; n2.textContent=it.name||''; el.appendChild(n2);
+  }
+
+  if(isEditMode){
+    var r=document.createElement('div'); r.className='resizer'; el.appendChild(r);
+  }
+
+  if(!isPublic) setupItemInteraction(el, it.id);
+  return el;
+}
+
+function calcDock(a,b){
+  var T=1;
+  if(Math.abs(a.x-b.x)<T&&Math.abs(a.w-b.w)<T&&Math.abs(a.y+a.h-b.y)<T)
+    return {x:a.x+a.w/2-10,y:a.y+a.h-6,w:20,h:12};
+  if(Math.abs(a.x-b.x)<T&&Math.abs(a.w-b.w)<T&&Math.abs(b.y+b.h-a.y)<T)
+    return {x:a.x+a.w/2-10,y:b.y+b.h-6,w:20,h:12};
+  if(Math.abs(a.y-b.y)<T&&Math.abs(a.h-b.h)<T&&Math.abs(a.x+a.w-b.x)<T)
+    return {x:a.x+a.w-6,y:a.y+a.h/2-10,w:12,h:20};
+  if(Math.abs(a.y-b.y)<T&&Math.abs(a.h-b.h)<T&&Math.abs(b.x+b.w-a.x)<T)
+    return {x:b.x+b.w-6,y:a.y+a.h/2-10,w:12,h:20};
+  return null;
+}
+
+/* ═══════════════════════════════════════
+   ITEM INTERACTION
+═══════════════════════════════════════ */
+function setupItemInteraction(el, id){
+  var isDrag=false, isResize=false, sx,sy, startPos=new Map(), moved=false, lpTimer;
+
+  function getIt(){ return curItems()[id]; }
+
+  el.addEventListener('pointerdown', function(e){
+    var it=getIt(); if(!it) return;
+    if(!isEditMode && it.type!=='seat') return;
+    e.stopPropagation();
+    moved=false; sx=e.clientX; sy=e.clientY;
+
+    if(isEditMode && selectedIds.indexOf(id)<0) setSelection([id]);
+
+    if(e.target.classList.contains('resizer') && isEditMode) isResize=true;
+    else isDrag=true;
+
+    var targets = (isEditMode && selectedIds.length>1) ? selectedIds : [id];
+    targets.forEach(function(sid){
+      var sit=curItems()[sid]; if(!sit) return;
+      startPos.set(sid,{x:sit.x,y:sit.y,w:sit.w,h:sit.h});
+      var sel=document.getElementById(sid);
+      if(sel) sel.classList.add('item-dragging');
+    });
+
+    el.setPointerCapture(e.pointerId);
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerup', onUp);
+
+    if(!isEditMode && it.type==='seat'){
+      lpTimer=setTimeout(function(){ moved=false; openSeatModal(id); }, 380);
+    }
+  });
+
+  function onMove(e){
+    var dx=(e.clientX-sx)/curScale, dy=(e.clientY-sy)/curScale;
+    if(Math.abs(dx)>3||Math.abs(dy)>3){ moved=true; clearTimeout(lpTimer); }
+    var it=getIt(); if(!it) return;
+
+    if(isResize){
+      var s=startPos.get(id);
+      it.w=clamp(snap(s.w+dx),20,CW-it.x);
+      it.h=clamp(snap(s.h+dy),20,CH-it.y);
+      el.style.width=it.w+'px'; el.style.height=it.h+'px';
+      if(it.type==='icon-item'){
+        var sp=el.querySelector('.icon-emoji');
+        if(sp) sp.style.fontSize=Math.min(it.w,it.h)*0.8+'px';
+      }
+    } else if(isDrag){
+      startPos.forEach(function(s,sid){
+        var sit=curItems()[sid]; if(!sit) return;
+        sit.x=clamp(snap(s.x+dx),0,CW-sit.w);
+        sit.y=clamp(snap(s.y+dy),0,CH-sit.h);
+        var sel=document.getElementById(sid);
+        if(sel){ sel.style.left=sit.x+'px'; sel.style.top=sit.y+'px'; }
+      });
+      if(isEditMode && startPos.size===1) showGuides(getIt());
+    }
+  }
+
+  function onUp(e){
+    isDrag=isResize=false; clearTimeout(lpTimer);
+    var gV=document.getElementById('gV'), gH=document.getElementById('gH');
+    gV.style.display=gH.style.display='none';
+    document.querySelectorAll('.item-dragging').forEach(function(t){ t.classList.remove('item-dragging'); });
+    el.releasePointerCapture(e.pointerId);
+    el.removeEventListener('pointermove',onMove);
+    el.removeEventListener('pointerup',onUp);
+
+    if(!moved){
+      var it=getIt();
+      if(!isEditMode && it && it.type==='seat') toggleSeatSimple(id);
+      else if(isEditMode) setSelection([id]);
+    } else {
+      if(isEditMode) pushHistory();
+      pushToServer();
+    }
+  }
+
+  el.addEventListener('contextmenu', function(e){
+    e.preventDefault();
+    var it=getIt();
+    if(!isEditMode && it && it.type==='seat') openSeatModal(id);
+  });
+}
+
+/* ═══════════════════════════════════════
+   SEAT TOGGLE (simple cycle)
+═══════════════════════════════════════ */
+var STATUS_CYCLE = {'':'occupied','occupied':'waiting','waiting':'','reserved':''};
+
+function toggleSeatSimple(id){
+  var it=curItems()[id]; if(!it||it.type!=='seat') return;
+  var next=STATUS_CYCLE[it.status||'']||'';
+  it.status=next;
+  it.occupiedSince = next==='occupied' ? Date.now() : (next===''?null:it.occupiedSince);
+  if(next==='') { it.guestName=''; it.guestCount=0; it.memo=''; }
+  renderAll(); pushToServer();
+}
+
+/* ═══════════════════════════════════════
+   SEAT MODAL
+═══════════════════════════════════════ */
+function openSeatModal(id){
+  seatModalId=id; pendingStatus=null;
+  var it=curItems()[id]; if(!it) return;
+  document.getElementById('seatModalTitle').textContent=it.name||'席の操作';
+  document.getElementById('smGuestName').value=it.guestName||'';
+  document.getElementById('smGuestCount').value=it.guestCount||'';
+  document.getElementById('smMemo').value=it.memo||'';
+
+  /* status buttons */
+  var map={'':'smEmpty','occupied':'smOccupied','waiting':'smWaiting','reserved':'smReserved'};
+  ['smEmpty','smOccupied','smWaiting','smReserved'].forEach(function(bid){
+    var b=document.getElementById(bid);
+    if(b) b.classList.remove('selected');
+  });
+  var cur=map[it.status||'']; if(cur){ var cb=document.getElementById(cur); if(cb) cb.classList.add('selected'); }
+
+  /* reserved fields */
+  var rf=document.getElementById('smReservedFields');
+  rf.style.display = it.status==='reserved' ? 'flex':'none';
+
+  /* current info */
+  var info=document.getElementById('smCurrentInfo');
+  if(it.status && it.status!=='reserved' && it.occupiedSince){
+    info.style.display='block';
+    var el=Date.now()-it.occupiedSince;
+    document.getElementById('smSinceTime').textContent=fmtClock(it.occupiedSince);
+    document.getElementById('smElapsed').textContent=fmtTime(el);
+    var warn=(it.warningTime||20)*60000, rem=warn-el;
+    document.getElementById('smRemaining').textContent=rem>0?fmtTime(rem):'警告中!';
+  } else { info.style.display='none'; }
+
+  pendingStatus = it.status||'';
+  openModal('seatModal');
+}
+
+/* status selector buttons */
+function setupStatusBtn(btnId, status){
+  var btn = document.getElementById(btnId);
+  if(!btn) return;
+  btn.onclick = function(){
+    pendingStatus = status;
+    ['smEmpty','smOccupied','smWaiting','smReserved'].forEach(function(bid){
+      var b=document.getElementById(bid); if(b) b.classList.remove('selected');
+    });
+    btn.classList.add('selected');
+    var rf=document.getElementById('smReservedFields');
+    rf.style.display = status==='reserved' ? 'flex':'none';
   };
-  window.addEventListener('pointermove', onSelectMove); window.addEventListener('pointerup', onSelectUp);
-});
+}
+setupStatusBtn('smEmpty','');
+setupStatusBtn('smOccupied','occupied');
+setupStatusBtn('smWaiting','waiting');
+setupStatusBtn('smReserved','reserved');
 
-function addItem(type, name, w, h, icon = '') {
-  const f = state.floors[state.currentFloor], id = 'item_' + f.nextId++;
-  f.items[id] = { id, type, name: icon || name, x: 100, y: 100, homeX: 100, homeY: 100, w, h, status: '', warningTime: 20, occupiedSince: null, memo: '' };
-  selectItems([id]); pushHistory(); autoSave();
+document.getElementById('smApply').onclick = function(){
+  var it=curItems()[seatModalId]; if(!it) return;
+  var ns = pendingStatus!==null ? pendingStatus : (it.status||'');
+  it.status = ns;
+  it.occupiedSince = ns==='occupied' ? (it.occupiedSince||Date.now()) : (ns===''?null:it.occupiedSince);
+  if(ns===''){
+    it.guestName=''; it.guestCount=0; it.memo='';
+  } else if(ns==='reserved'){
+    it.guestName=document.getElementById('smGuestName').value.trim();
+    it.guestCount=parseInt(document.getElementById('smGuestCount').value)||0;
+    it.memo=document.getElementById('smMemo').value.trim();
+  }
+  renderAll(); pushToServer(); closeModal('seatModal');
+};
+document.getElementById('smCancel').onclick = function(){ closeModal('seatModal'); };
+
+/* ═══════════════════════════════════════
+   SELECTION
+═══════════════════════════════════════ */
+function setSelection(ids){
+  selectedIds=ids; renderAll(); updateSidebarForSelection();
 }
 
-function toggleSeat(id) {
-  const s = state.floors[state.currentFloor].items[id], cycle = { '': 'occupied', 'occupied': 'waiting', 'waiting': 'reserved', 'reserved': '' };
-  s.status = cycle[s.status || '']; s.occupiedSince = (s.status === 'occupied') ? Date.now() : (s.status === '' ? null : s.occupiedSince);
-  render(); autoSave();
+function updateSidebarForSelection(){
+  if(isPublic) return;
+  document.getElementById('selCount').textContent=selectedIds.length;
+  var gp=document.getElementById('groupPanel');
+  gp.style.display=selectedIds.length>1&&isEditMode?'block':'none';
+
+  if(isEditMode){
+    var ep=document.getElementById('editPanel');
+    var one=selectedIds.length===1;
+    ep.style.display=one?'block':'none';
+    if(one){
+      var it=curItems()[selectedIds[0]]; if(!it) return;
+      document.getElementById('propName').value=it.name||'';
+      document.getElementById('propMemo').value=it.memo||'';
+      document.getElementById('propWarning').value=it.warningTime||20;
+      document.getElementById('propGuest').value=it.guestName||'';
+      document.getElementById('propCount').value=it.guestCount||'';
+      document.getElementById('propGuestArea').style.display=it.type==='seat'?'block':'none';
+      renderColorSwatches(it.color||'');
+    }
+  }
+
+  /* モバイルサイドバー */
+  if(selectedIds.length>0 && window.innerWidth<=700)
+    document.getElementById('sidebar').classList.add('open');
 }
 
-document.getElementById('modeBtn').onclick = function() {
-  state.isEditMode = !state.isEditMode; state.selectedIds = []; updateToolbarVisibility();
-  this.textContent = state.isEditMode ? '🔨 編集終了' : '📊 監理モード';
-  this.classList.toggle('btn-active', state.isEditMode);
-  if(state.isEditMode) floorNameEdit.value = state.floors[state.currentFloor].name;
-  document.body.classList.remove('sidebar-open');
-  render(); setTimeout(resizeCanvas, 50);
+/* ═══════════════════════════════════════
+   COLOR SWATCHES
+═══════════════════════════════════════ */
+function renderColorSwatches(current){
+  var row=document.getElementById('colorRow'); if(!row) return;
+  row.innerHTML='';
+  SEAT_COLORS.forEach(function(c){
+    var d=document.createElement('div');
+    d.className='color-swatch'+(c.value===current?' active':'');
+    d.style.background=c.value||'var(--c-seat)';
+    d.title=c.label;
+    d.onclick=function(){
+      if(selectedIds.length===1){
+        curItems()[selectedIds[0]].color=c.value;
+        renderAll(); renderColorSwatches(c.value); pushToServer();
+      }
+    };
+    row.appendChild(d);
+  });
+}
+
+/* ═══════════════════════════════════════
+   LASSO SELECTION
+═══════════════════════════════════════ */
+(function(){
+  var selBox=document.getElementById('selBox');
+  var active=false, bx,by;
+  canvasWrap.addEventListener('pointerdown', function(e){
+    if(e.target!==canvasWrap&&e.target!==canvas) return;
+    var r=canvas.getBoundingClientRect();
+    bx=(e.clientX-r.left)/curScale; by=(e.clientY-r.top)/curScale;
+    bx=clamp(bx,0,CW); by=clamp(by,0,CH);
+    active=true;
+    selBox.style.cssText='display:block;left:'+bx+'px;top:'+by+'px;width:0;height:0;';
+    e.target.setPointerCapture(e.pointerId);
+  });
+  canvasWrap.addEventListener('pointermove', function(e){
+    if(!active) return;
+    var r=canvas.getBoundingClientRect();
+    var cx=clamp((e.clientX-r.left)/curScale,0,CW);
+    var cy=clamp((e.clientY-r.top)/curScale,0,CH);
+    selBox.style.left=Math.min(bx,cx)+'px';
+    selBox.style.top=Math.min(by,cy)+'px';
+    selBox.style.width=Math.abs(cx-bx)+'px';
+    selBox.style.height=Math.abs(cy-by)+'px';
+  });
+  canvasWrap.addEventListener('pointerup', function(){
+    if(!active) return; active=false;
+    var l=parseFloat(selBox.style.left),  t=parseFloat(selBox.style.top);
+    var rr=l+parseFloat(selBox.style.width), b=t+parseFloat(selBox.style.height);
+    var ids=[];
+    Object.values(curItems()).forEach(function(it){
+      if(!(it.x+it.w<l||it.x>rr||it.y+it.h<t||it.y>b)) ids.push(it.id);
+    });
+    selBox.style.display='none';
+    if(ids.length>0) setSelection(ids);
+  });
+})();
+
+/* ═══════════════════════════════════════
+   SNAP GUIDES
+═══════════════════════════════════════ */
+function showGuides(target){
+  if(!target) return;
+  var gV=document.getElementById('gV'), gH=document.getElementById('gH');
+  var sv=false,sh=false;
+  Object.values(curItems()).forEach(function(it){
+    if(it.id===target.id) return;
+    var tcx=target.x+target.w/2, tcy=target.y+target.h/2;
+    var icx=it.x+it.w/2, icy=it.y+it.h/2;
+    if(Math.abs(it.x-target.x)<3){gV.style.left=it.x+'px';sv=true;}
+    else if(Math.abs(it.x+it.w-(target.x+target.w))<3){gV.style.left=(it.x+it.w)+'px';sv=true;}
+    else if(Math.abs(icx-tcx)<3){gV.style.left=icx+'px';sv=true;}
+    if(Math.abs(it.y-target.y)<3){gH.style.top=it.y+'px';sh=true;}
+    else if(Math.abs(it.y+it.h-(target.y+target.h))<3){gH.style.top=(it.y+it.h)+'px';sh=true;}
+    else if(Math.abs(icy-tcy)<3){gH.style.top=icy+'px';sh=true;}
+  });
+  gV.style.display=sv?'block':'none'; gH.style.display=sh?'block':'none';
+}
+
+/* ═══════════════════════════════════════
+   ADD ITEMS
+═══════════════════════════════════════ */
+function addItem(type,name,w,h,icon){
+  icon=icon||'';
+  var fl=curFloor(), id='item_'+fl.nextId++;
+  var rx=snap(80+Math.floor(Math.random()*300));
+  var ry=snap(80+Math.floor(Math.random()*200));
+  fl.items[id]={
+    id:id,type:type,name:icon||name,
+    x:rx,y:ry,homeX:rx,homeY:ry,
+    w:w,h:h,status:'',warningTime:20,
+    occupiedSince:null,memo:'',guestName:'',guestCount:0,color:''
+  };
+  setSelection([id]); pushHistory(); renderAll(); pushToServer();
+  toast('追加しました: '+(name||icon||type));
+}
+
+/* ═══════════════════════════════════════
+   TOOLBAR EVENTS
+═══════════════════════════════════════ */
+document.getElementById('modeBtn').onclick = function(){
+  isEditMode = !isEditMode;
+  selectedIds=[];
+  setBodyMode(isEditMode?'edit':'manage');
+  this.textContent = isEditMode?'✅ 編集終了':'🔨 編集';
+  this.classList.toggle('active', isEditMode);
+  var sbt=document.getElementById('sbToggleBtn');
+  sbt.style.display=(isEditMode&&window.innerWidth<=700)?'inline-block':'none';
+  updateHistBtns(); renderAll(); renderFloorTabs();
 };
 
-document.getElementById('addSeatBtn').onclick = () => addItem('seat', '席', 100, 100);
-document.getElementById('addWallBtn').onclick = () => addItem('wall', '', 200, 15);
-document.getElementById('addIconBtn').onclick = () => document.getElementById('iconModal').style.display = 'flex';
-function closeIconModal() { document.getElementById('iconModal').style.display = 'none'; }
-document.getElementById('propName').onchange = (e) => { if(state.selectedIds.length===1) { state.floors[state.currentFloor].items[state.selectedIds[0]].name = e.target.value; pushHistory(); render(); autoSave(); } };
-document.getElementById('propMemo').onchange = (e) => { if(state.selectedIds.length===1) { state.floors[state.currentFloor].items[state.selectedIds[0]].memo = e.target.value; render(); autoSave(); } };
-document.getElementById('propWarningTime').onchange = (e) => { if(state.selectedIds.length===1) { state.floors[state.currentFloor].items[state.selectedIds[0]].warningTime = parseInt(e.target.value)||20; pushHistory(); autoSave(); } };
-document.getElementById('delBtn').onclick = () => { if(state.selectedIds.length>0 && confirm('削除しますか？')){ state.selectedIds.forEach(id => delete state.floors[state.currentFloor].items[id]); state.selectedIds=[]; pushHistory(); render(); autoSave(); } };
-document.getElementById('clearSeatsBtn').onclick = () => { if(confirm('全席リセットしますか？')){ Object.values(state.floors[state.currentFloor].items).forEach(it => {if(it.type==='seat'){it.status='';it.occupiedSince=null;}}); render(); autoSave(); } };
-document.getElementById('saveBtn').onclick = () => { Object.values(state.floors[state.currentFloor].items).forEach(it => { it.homeX = it.x; it.homeY = it.y; }); autoSave(); alert('保存しました'); };
-document.getElementById('fullscreenBtn').onclick = () => { if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); };
-document.getElementById('undoBtn').onclick = undo; document.getElementById('redoBtn').onclick = redo;
-floorNameEdit.onchange = (e) => { state.floors[state.currentFloor].name = e.target.value; updateFloorButtons(); pushHistory(); autoSave(); };
-document.getElementById('publicLinkBtn').onclick = () => window.open(window.location.href.split('?')[0] + "?public=true", '_blank');
+document.getElementById('addSeatBtn').onclick = function(){ addItem('seat','席',100,100); };
+document.getElementById('addWallBtn').onclick = function(){ addItem('wall','',200,15); };
+document.getElementById('addIconBtn').onclick = function(){ openModal('iconModal'); };
 
-window.addEventListener('keydown', (e) => { if (state.isEditMode) { if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); } } });
+document.getElementById('saveHomeBtn').onclick = function(){
+  Object.values(curItems()).forEach(function(it){ it.homeX=it.x; it.homeY=it.y; });
+  pushHistory(); pushToServer(); toast('ホーム位置を保存しました ✓');
+};
 
-// 【修正】タイマーで状態が変わった際に、画面を再描画してサーバーに同期する処理を追加
-setInterval(() => {
-  const now = Date.now();
-  let needsUpdate = false;
-  
-  Object.keys(state.floors).forEach(fId => {
-    Object.values(state.floors[fId].items).forEach(it => {
-      if (it.type === 'seat' && (it.status === 'occupied' || it.status === 'waiting')) {
-        const elapsed = now - it.occupiedSince;
-        
-        // 警告時間を超えたら状態を変更
-        if (it.status === 'occupied' && elapsed >= (it.warningTime || 20) * 60000) {
-            it.status = 'waiting';
-            needsUpdate = true; // 更新フラグを立てる
-        }
-        
-        // 時間の表示更新
-        if (fId === state.currentFloor) {
-          const el = document.getElementById(it.id);
-          if (el) { 
-              const ts = el.querySelector('.time-display'); 
-              if (ts) ts.textContent = `${Math.floor(elapsed/60000)}分${Math.floor((elapsed%60000)/1000).toString().padStart(2,'0')}秒`; 
-          }
-        }
+document.getElementById('resetBtn').onclick = function(){
+  if(!confirm('全ての席を元の定位置に戻しますか？')) return;
+  Object.values(curItems()).forEach(function(it){
+    if(it.homeX!==undefined){ it.x=it.homeX; it.y=it.homeY; }
+  });
+  pushToServer(); renderAll(); toast('配置をリセットしました');
+};
+
+document.getElementById('addFloorBtn').onclick = function(){
+  var name=prompt('新しいフロア名を入力','新フロア'); if(!name) return;
+  var id='F'+(Date.now()%100000);
+  state.floors[id]={name:name,nextId:1,items:{}};
+  state.currentFloor=id; selectedIds=[];
+  renderFloorTabs(); renderAll(); pushHistory(); pushToServer();
+  toast('フロアを追加しました: '+name);
+};
+
+document.getElementById('delFloorBtn').onclick = function(){
+  if(Object.keys(state.floors).length<=1){ toast('⚠ フロアは最低1つ必要です'); return; }
+  var name=curFloor().name||state.currentFloor;
+  if(!confirm('「'+name+'」フロアを削除しますか？')) return;
+  delete state.floors[state.currentFloor];
+  state.currentFloor=Object.keys(state.floors)[0];
+  selectedIds=[];
+  renderFloorTabs(); renderAll(); pushHistory(); pushToServer();
+  toast('フロアを削除しました');
+};
+
+/* フロア名変更 */
+document.getElementById('floorNameInput').onchange = function(e){
+  curFloor().name=e.target.value; renderFloorTabs(); pushHistory(); pushToServer();
+};
+
+/* prop panel */
+document.getElementById('propName').onchange = function(e){
+  if(selectedIds.length===1){ curItems()[selectedIds[0]].name=e.target.value; renderAll(); pushHistory(); pushToServer(); }
+};
+document.getElementById('propMemo').onchange = function(e){
+  if(selectedIds.length===1){ curItems()[selectedIds[0]].memo=e.target.value; renderAll(); pushToServer(); }
+};
+document.getElementById('propWarning').onchange = function(e){
+  if(selectedIds.length===1){ curItems()[selectedIds[0]].warningTime=parseInt(e.target.value)||20; pushHistory(); pushToServer(); }
+};
+document.getElementById('propGuest').onchange = function(e){
+  if(selectedIds.length===1){ curItems()[selectedIds[0]].guestName=e.target.value; renderAll(); pushToServer(); }
+};
+document.getElementById('propCount').onchange = function(e){
+  if(selectedIds.length===1){ curItems()[selectedIds[0]].guestCount=parseInt(e.target.value)||0; renderAll(); pushToServer(); }
+};
+document.getElementById('delBtn').onclick = function(){
+  if(selectedIds.length>0&&confirm('選択したアイテムを削除しますか？')){
+    selectedIds.forEach(function(id){ delete curItems()[id]; });
+    selectedIds=[]; pushHistory(); renderAll(); pushToServer(); toast('削除しました');
+  }
+};
+document.getElementById('undoBtn').onclick = undo;
+document.getElementById('redoBtn').onclick = redo;
+
+/* ドッキング */
+document.getElementById('dockBtn').onclick = function(){
+  var seats=selectedIds.map(function(id){ return curItems()[id]; }).filter(function(it){ return it&&it.type==='seat'; });
+  if(seats.length<2){ toast('2つ以上の席を選択してください'); return; }
+  var minX=Math.min.apply(null,seats.map(function(s){ return s.x; }));
+  var maxX=Math.max.apply(null,seats.map(function(s){ return s.x+s.w; }));
+  var minY=Math.min.apply(null,seats.map(function(s){ return s.y; }));
+  var maxY=Math.max.apply(null,seats.map(function(s){ return s.y+s.h; }));
+  if((maxX-minX)>=(maxY-minY)){
+    seats.sort(function(a,b){ return a.x-b.x; });
+    var nx=seats[0].x+seats[0].w;
+    for(var i=1;i<seats.length;i++){ seats[i].x=nx; seats[i].y=seats[0].y; nx+=seats[i].w; }
+  } else {
+    seats.sort(function(a,b){ return a.y-b.y; });
+    var ny=seats[0].y+seats[0].h;
+    for(var i=1;i<seats.length;i++){ seats[i].y=ny; seats[i].x=seats[0].x; ny+=seats[i].h; }
+  }
+  pushHistory(); renderAll(); pushToServer(); toast('席をドッキングしました ✓');
+};
+
+document.getElementById('undockBtn').onclick = function(){
+  selectedIds.forEach(function(id){
+    var it=curItems()[id];
+    if(it&&it.homeX!==undefined){ it.x=it.homeX; it.y=it.homeY; }
+  });
+  pushHistory(); renderAll(); pushToServer(); toast('ホーム位置に戻しました');
+};
+
+/* 管理ボタン */
+document.getElementById('clearAllBtn').onclick = function(){
+  if(!confirm('全席を空席リセットしますか？')) return;
+  Object.values(curItems()).forEach(function(it){
+    if(it.type==='seat'){ it.status=''; it.occupiedSince=null; it.guestName=''; it.guestCount=0; it.memo=''; }
+  });
+  renderAll(); pushToServer(); toast('全席を空席にしました ✓');
+};
+
+document.getElementById('exportBtn').onclick = function(){
+  var blob=new Blob([JSON.stringify(state,null,2)],{type:'application/json'});
+  var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='matsunoki_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+  toast('エクスポートしました ✓');
+};
+
+document.getElementById('importBtn').onclick = function(){
+  document.getElementById('importText').value='';
+  openModal('importModal');
+};
+document.getElementById('importApply').onclick = function(){
+  try{
+    var data=JSON.parse(document.getElementById('importText').value);
+    if(!data.floors) throw new Error('invalid');
+    state.floors=data.floors;
+    state.currentFloor=data.currentFloor||Object.keys(data.floors)[0];
+    pushHistory(); renderFloorTabs(); renderAll(); pushToServer();
+    closeModal('importModal'); toast('データを読み込みました ✓');
+  }catch(e){ toast('⚠ データの形式が正しくありません'); }
+};
+document.getElementById('importCancel').onclick = function(){ closeModal('importModal'); };
+
+document.getElementById('printBtn').onclick = function(){ window.print(); };
+document.getElementById('pubLinkBtn').onclick = function(){
+  window.open(location.href.split('?')[0]+'?public=true','_blank');
+};
+
+/* アイコン */
+(function(){
+  var grid=document.getElementById('iconGrid');
+  ICONS.forEach(function(icon){
+    var d=document.createElement('div'); d.className='icon-option'; d.textContent=icon;
+    d.onclick=function(){ addItem('icon-item','',64,64,icon); closeModal('iconModal'); };
+    grid.appendChild(d);
+  });
+  document.getElementById('iconCancel').onclick=function(){ closeModal('iconModal'); };
+})();
+
+document.getElementById('fsBtn').onclick = function(){
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();
+  else document.exitFullscreen&&document.exitFullscreen();
+};
+
+document.getElementById('sbToggleBtn').onclick = function(){
+  document.getElementById('sidebar').classList.toggle('open');
+};
+
+/* ═══════════════════════════════════════
+   TIMER (1s tick)
+═══════════════════════════════════════ */
+setInterval(function(){
+  var now=Date.now(), needsSave=false;
+  Object.values(state.floors).forEach(function(fl){
+    Object.values(fl.items).forEach(function(it){
+      if(it.type!=='seat'||!it.status||it.status==='reserved'||!it.occupiedSince) return;
+      var elapsed=now-it.occupiedSince;
+      var warn=(it.warningTime||20)*60000;
+      if(it.status==='occupied'&&elapsed>=warn){ it.status='waiting'; needsSave=true; }
+      if(fl===curFloor()){
+        var el=document.getElementById(it.id);
+        if(el){ var t=el.querySelector('.lbl-time'); if(t) t.textContent=fmtTime(elapsed); }
       }
     });
   });
-  
-  // 状態が変わった席があった場合のみ、画面を再描画してサーバーへ送信
-  if (needsUpdate) {
-      render();
-      autoSave();
+  if(needsSave){ renderAll(); pushToServer(); }
+  updateStats();
+}, TIMER_MS);
+
+/* ═══════════════════════════════════════
+   KEYBOARD SHORTCUTS
+═══════════════════════════════════════ */
+document.addEventListener('keydown', function(e){
+  if(['INPUT','TEXTAREA','SELECT'].indexOf(e.target.tagName)>=0) return;
+  var ctrl=e.ctrlKey||e.metaKey;
+  if(ctrl&&e.key==='z'&&isEditMode){ e.preventDefault(); undo(); }
+  if(ctrl&&e.key==='y'&&isEditMode){ e.preventDefault(); redo(); }
+  if(ctrl&&e.key==='a'&&isEditMode){
+    e.preventDefault(); setSelection(Object.keys(curItems()));
   }
-}, 1000);
+  if(e.key==='Escape'){
+    selectedIds=[]; renderAll();
+    document.getElementById('sidebar').classList.remove('open');
+    closeModal('seatModal'); closeModal('iconModal'); closeModal('importModal');
+  }
+  if((e.key==='Delete'||e.key==='Backspace')&&isEditMode&&selectedIds.length>0){
+    e.preventDefault();
+    if(confirm('選択アイテムを削除しますか？')){
+      selectedIds.forEach(function(id){ delete curItems()[id]; });
+      selectedIds=[]; pushHistory(); renderAll(); pushToServer();
+    }
+  }
+});
+
+/* ═══════════════════════════════════════
+   PUBLIC MODE
+═══════════════════════════════════════ */
+function setupPublicMode(){
+  setBodyMode('public');
+  document.getElementById('mainTitle').textContent='🍽 松乃木飯店 - 空席状況';
+  document.getElementById('pubLegend').style.display='flex';
+  document.getElementById('pubStats').style.display='block';
+}
+
+/* ═══════════════════════════════════════
+   INIT
+═══════════════════════════════════════ */
+async function init(){
+  /* ローカルキャッシュ */
+  try{
+    var ls=localStorage.getItem(LS_KEY);
+    if(ls){ var d=JSON.parse(ls); if(d&&d.floors){ state=d; } }
+  }catch(e){}
+
+  if(isPublic) setupPublicMode();
+  else setBodyMode('manage');
+
+  renderFloorTabs();
+  renderAll();
+  fitCanvas();
+  pushHistory();
+
+  await loadFromServer();
+  startPolling();
+
+  window.addEventListener('resize', fitCanvas);
+}
 
 init();
+
+})(); // IIFE end
 </script>
 </body>
 </html>
