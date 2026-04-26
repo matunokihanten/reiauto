@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,maximum-scale=1.0" />
-<title>松乃木飯店 Pro (Ver. Ultimate 1.4 Auto-Recovery)</title>
+<title>松乃木飯店 Pro (Ver. Ultimate 1.4.1 Auto-Recovery & Timer Fix)</title>
 <style>
   :root {
     --bg-floor: #d9d9cb;
@@ -174,7 +174,6 @@ const urlParams = new URLSearchParams(window.location.search);
 const isPublicMode = urlParams.get('public') === 'true';
 let socket;
 
-// 【修正】タイムスタンプ(lastUpdate)を追加し、新旧を判定できるようにしました
 let state = {
   isEditMode: false, currentFloor: '1F',
   floors: { '1F': { name: '1階', items: {}, nextId: 1 }, '2F': { name: '2階', items: {}, nextId: 1 }, '3F': { name: '3階', items: {}, nextId: 1 } },
@@ -197,18 +196,16 @@ const guideH = document.getElementById('guideH');
 function initSocket() {
   socket = io();
   socket.on('dataChanged', (newData) => {
-    // 【オートリカバリー機能】 サーバーがスリープから復帰して初期データを送ってきたら、ローカルデータで復元する
     const localStr = localStorage.getItem('matsunoki_state');
     if (!isPublicMode && localStr) {
       try {
         const localData = JSON.parse(localStr);
         const serverTime = newData.lastUpdate || 0;
         const localTime = localData.lastUpdate || 0;
-        // サーバーよりローカルのデータの方が5秒以上新しければ、サーバーの初期化を検知して復元
         if (localTime > serverTime + 5000) {
           console.log("サーバーのリセットを検知しました。ローカルバックアップから復旧します。");
           state = localData;
-          autoSave(); // サーバーに最新データを送り直す
+          autoSave(); 
           render();
           return;
         }
@@ -217,7 +214,7 @@ function initSocket() {
 
     state.floors = newData.floors;
     if (newData.lastUpdate) state.lastUpdate = newData.lastUpdate;
-    if (!isPublicMode) localStorage.setItem('matsunoki_state', JSON.stringify(state)); // 正常なデータを受信した時もバックアップ
+    if (!isPublicMode) localStorage.setItem('matsunoki_state', JSON.stringify(state));
 
     if (state.history.length === 0) pushHistory();
     updateFloorButtons();
@@ -229,7 +226,6 @@ function initSocket() {
 function autoSave() {
   if (isPublicMode || !socket) return;
   saveStatus.textContent = '同期中...';
-  // 【修正】保存時にタイムスタンプを更新し、ローカルに記憶させる
   state.lastUpdate = Date.now();
   localStorage.setItem('matsunoki_state', JSON.stringify(state));
   socket.emit('updateData', state);
@@ -478,20 +474,39 @@ document.getElementById('publicLinkBtn').onclick = () => window.open(window.loca
 
 window.addEventListener('keydown', (e) => { if (state.isEditMode) { if (e.ctrlKey && e.key === 'z') { e.preventDefault(); undo(); } if (e.ctrlKey && e.key === 'y') { e.preventDefault(); redo(); } } });
 
+// 【修正】タイマーで状態が変わった際に、画面を再描画してサーバーに同期する処理を追加
 setInterval(() => {
   const now = Date.now();
+  let needsUpdate = false;
+  
   Object.keys(state.floors).forEach(fId => {
     Object.values(state.floors[fId].items).forEach(it => {
       if (it.type === 'seat' && (it.status === 'occupied' || it.status === 'waiting')) {
         const elapsed = now - it.occupiedSince;
-        if (it.status === 'occupied' && elapsed >= (it.warningTime || 20)*60000) it.status = 'waiting';
+        
+        // 警告時間を超えたら状態を変更
+        if (it.status === 'occupied' && elapsed >= (it.warningTime || 20) * 60000) {
+            it.status = 'waiting';
+            needsUpdate = true; // 更新フラグを立てる
+        }
+        
+        // 時間の表示更新
         if (fId === state.currentFloor) {
           const el = document.getElementById(it.id);
-          if (el) { const ts = el.querySelector('.time-display'); if (ts) ts.textContent = `${Math.floor(elapsed/60000)}分${Math.floor((elapsed%60000)/1000).toString().padStart(2,'0')}秒`; }
+          if (el) { 
+              const ts = el.querySelector('.time-display'); 
+              if (ts) ts.textContent = `${Math.floor(elapsed/60000)}分${Math.floor((elapsed%60000)/1000).toString().padStart(2,'0')}秒`; 
+          }
         }
       }
     });
   });
+  
+  // 状態が変わった席があった場合のみ、画面を再描画してサーバーへ送信
+  if (needsUpdate) {
+      render();
+      autoSave();
+  }
 }, 1000);
 
 init();
