@@ -103,7 +103,6 @@
   .waiting { background: #f59e0b !important; color: white !important; border-color: #b45309; }
   .wall { background: var(--wall-color); border-radius: 2px; }
 
-  /* アイコンアイテムのリサイズ対応 */
   .icon-item { display: flex; align-items: center; justify-content: center; overflow: visible; }
   .icon-emoji { pointer-events: none; line-height: 1; }
 
@@ -247,7 +246,7 @@ let state = {
 };
 
 const iconSets = ["🌿","🍀","🌵","🌴","🌲","🌳","🎋","🌸","🌼","🌻","🍁","🍃","🪑","🛋️","🪟","💡","🚪","🚻","💰","🍳","🍴","🍵","🍶","🚭","📶","🚲"];
-let currentScale = 1, isSaving = false;
+let currentScale = 1, isSaving = false, saveTimeout = null;
 
 const canvas = document.getElementById('floorCanvas');
 const container = document.getElementById('canvasContainer');
@@ -267,7 +266,28 @@ function undo() { if (state.historyIndex > 0) { state.historyIndex--; state.floo
 function redo() { if (state.historyIndex < state.history.length - 1) { state.historyIndex++; state.floors = JSON.parse(JSON.stringify(state.history[state.historyIndex])); render(); updateHistoryButtons(); autoSave(); } }
 function updateHistoryButtons() { const u = document.getElementById('undoBtn'), r = document.getElementById('redoBtn'); if(u) u.disabled = state.historyIndex <= 0; if(r) r.disabled = state.historyIndex >= state.history.length - 1; }
 
-async function autoSave(show = false) { if(isPublicMode) return; isSaving = true; saveStatus.textContent = '保存中...'; try { const res = await fetch('save.php', { method: 'POST', body: JSON.stringify(state) }); if (res.ok) { saveStatus.textContent = '同期済み'; if (show) alert('保存完了'); } } catch (e) { saveStatus.textContent = '通信エラー'; } setTimeout(() => isSaving = false, 800); }
+// 修正箇所：連続保存の通信追い越しを防ぐため、デバウンス（待機処理）を導入
+async function autoSave(show = false) { 
+  if(isPublicMode) return; 
+  if(saveTimeout) clearTimeout(saveTimeout);
+  saveStatus.textContent = '保存待機...'; 
+  
+  saveTimeout = setTimeout(async () => {
+    isSaving = true; 
+    saveStatus.textContent = '保存中...'; 
+    try { 
+      const res = await fetch('save.php', { method: 'POST', body: JSON.stringify(state) }); 
+      if (res.ok) { 
+        saveStatus.textContent = '同期済み'; 
+        if (show) alert('保存完了'); 
+      } 
+    } catch (e) { 
+      saveStatus.textContent = '通信エラー'; 
+    } 
+    setTimeout(() => isSaving = false, 800); 
+  }, 300);
+}
+
 async function syncFromServer() { if (isSaving || state.selectedIds.length > 0 || state.isEditMode) return; try { const res = await fetch('layout.json?t=' + Date.now()); if (res.ok) { const data = await res.json(); if (JSON.stringify(state.floors) !== JSON.stringify(data.floors)) { state.floors = data.floors; if (state.history.length === 0) pushHistory(); updateFloorButtons(); render(); } } } catch (e) {} }
 setInterval(syncFromServer, 3000);
 
@@ -319,7 +339,6 @@ function render() {
       const emoji = document.createElement('span');
       emoji.className = 'icon-emoji';
       emoji.textContent = it.name || '';
-      // 💡 アイコンサイズを枠の大きさに連動させる
       emoji.style.fontSize = (Math.min(it.w, it.h) * 0.8) + 'px';
       el.appendChild(emoji);
     } else if (it.type !== 'wall') {
@@ -395,7 +414,7 @@ document.getElementById('dockBtn').onclick = () => {
     for (let i = 1; i < selectedSeats.length; i++) { selectedSeats[i].y = nY; selectedSeats[i].x = base.x; nY += selectedSeats[i].h; }
   }
   if (state.isEditMode) pushHistory();
-  selectItems([]); // 修正箇所：ドッキング後に選択を解除してパネルを隠す
+  selectItems([]); 
   render(); autoSave();
 };
 
@@ -403,7 +422,7 @@ document.getElementById('undockBtn').onclick = () => {
   const items = state.floors[state.currentFloor].items;
   state.selectedIds.forEach(id => { const it = items[id]; if (it.homeX !== undefined) it.x = it.homeX, it.y = it.homeY; });
   if (state.isEditMode) pushHistory();
-  selectItems([]); // 修正箇所：連結解除後に選択を解除してパネルを隠す
+  selectItems([]); 
   render(); autoSave();
 };
 
@@ -429,7 +448,6 @@ function setupDrag(el, id, rs) {
       it.w = Math.round(Math.max(20, Math.min(s.w + dx, 1200 - it.x)) / 10) * 10;
       it.h = Math.round(Math.max(20, Math.min(s.h + dy, 800 - it.y)) / 10) * 10;
       el.style.width = it.w + 'px'; el.style.height = it.h + 'px';
-      // 💡 リサイズ中にアイコンのフォントサイズも即座に更新
       if(it.type === 'icon-item') {
         const em = el.querySelector('.icon-emoji');
         if(em) em.style.fontSize = (Math.min(it.w, it.h) * 0.8) + 'px';
@@ -512,9 +530,30 @@ function closeIconModal() { document.getElementById('iconModal').style.display =
 document.getElementById('propName').onchange = (e) => { if(state.selectedIds.length===1) { state.floors[state.currentFloor].items[state.selectedIds[0]].name = e.target.value; pushHistory(); render(); autoSave(); } };
 document.getElementById('propMemo').onchange = (e) => { if(state.selectedIds.length===1) { state.floors[state.currentFloor].items[state.selectedIds[0]].memo = e.target.value; render(); } };
 document.getElementById('propWarningTime').onchange = (e) => { if(state.selectedIds.length===1) { state.floors[state.currentFloor].items[state.selectedIds[0]].warningTime = parseInt(e.target.value)||20; pushHistory(); autoSave(); } };
+
+// 修正箇所：リセット時に履歴を正しく保存させる
+document.getElementById('clearSeatsBtn').onclick = () => { 
+  if(confirm('全席リセットしますか？')){ 
+    Object.values(state.floors[state.currentFloor].items).forEach(it => {
+      if(it.type==='seat'){it.status='';it.occupiedSince=null;}
+    }); 
+    pushHistory(); 
+    render(); 
+    autoSave(); 
+  } 
+};
+
 document.getElementById('delBtn').onclick = () => { if(state.selectedIds.length>0 && confirm('削除しますか？')){ state.selectedIds.forEach(id => delete state.floors[state.currentFloor].items[id]); state.selectedIds=[]; pushHistory(); render(); autoSave(); } };
-document.getElementById('clearSeatsBtn').onclick = () => { if(confirm('全席リセットしますか？')){ Object.values(state.floors[state.currentFloor].items).forEach(it => {if(it.type==='seat'){it.status='';it.occupiedSince=null;}}); render(); autoSave(); } };
-document.getElementById('saveBtn').onclick = () => { Object.values(state.floors[state.currentFloor].items).forEach(it => { it.homeX = it.x; it.homeY = it.y; }); autoSave(true); };
+
+// 修正箇所：保存時にも履歴を正しく記録させる
+document.getElementById('saveBtn').onclick = () => { 
+  Object.values(state.floors[state.currentFloor].items).forEach(it => { 
+    it.homeX = it.x; it.homeY = it.y; 
+  }); 
+  pushHistory(); 
+  autoSave(true); 
+};
+
 document.getElementById('refreshBtn').onclick = async () => { await init(); alert('更新完了'); };
 document.getElementById('fullscreenBtn').onclick = () => { if(!document.fullscreenElement) document.documentElement.requestFullscreen(); else document.exitFullscreen(); };
 document.getElementById('undoBtn').onclick = undo; document.getElementById('redoBtn').onclick = redo;
