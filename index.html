@@ -75,6 +75,7 @@ body.dark #canvasWrap{background:#0f172a;}
 
 /* モード切替: 管理モード時はサイドバーを完全に隠す */
 body.manage-mode #sidebar{display:none!important;}
+
 body.public-mode #sidebar{display:none!important;}
 body.public-mode .edit-only{display:none!important;}
 body.manage-mode .edit-only{display:none!important;}
@@ -143,7 +144,7 @@ body.manage-mode .edit-only{display:none!important;}
 .resizer{width:18px;height:18px;background:var(--c-accent);position:absolute;right:-9px;bottom:-9px;cursor:nwse-resize;display:none;border-radius:50%;border:3px solid #fff;z-index:10;}
 .item-selected .resizer{display:block;}
 
-/* DOCK CONNECTOR (復元) */
+/* DOCK CONNECTOR */
 .dock-connector {
   position: absolute; background: #555; pointer-events: none; z-index: 15;
   display: flex; align-items: center; justify-content: center;
@@ -285,7 +286,11 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
 
   <button class="hbtn" id="themeBtn" title="ダーク/ライト切替">🌙</button>
   <button class="hbtn" id="fsBtn" title="全画面">⛶</button>
-  <button class="hbtn edit-only" id="resetBtn">🏠 配置リセット</button>
+  <button class="hbtn" id="resetBtn">🏠 配置リセット</button>
+  
+  <button class="hbtn primary" id="headDockBtn" style="display:none;">⛓ 連結</button>
+  <button class="hbtn" id="headUndockBtn" style="display:none;">🔓 解除</button>
+
   <button class="hbtn" id="modeBtn">🔨 編集</button>
   <button class="hbtn edit-only" style="background:#14532d;color:#bbf7d0;" id="addSeatBtn">＋ 席</button>
   <button class="hbtn edit-only" style="background:#7f1d1d;color:#fecaca;" id="addWallBtn">＋ 壁</button>
@@ -505,7 +510,7 @@ var selectedIds = [];
 var histBuf     = [];
 var histIdx     = -1;
 var curScale    = 1;
-// ★変更: 背景固定のためパンの変数を常に0にする
+// 背景固定のためパンの変数を常に0にする
 var panX = 0, panY = 0;
 var seatModalId = null;
 var pendingStatus = null;
@@ -588,9 +593,7 @@ function initSocket() {
   
   socket = io();
 
-  // サーバーからのリアルタイム更新受信
   socket.on('dataChanged', function(newData) {
-    // 自分が編集中や、まさに今保存中の場合は競合を防ぐため上書きしない
     if (isSaving || selectedIds.length > 0 || isEditMode) return;
 
     if (newData && newData.floors) {
@@ -614,11 +617,10 @@ function initSocket() {
   socket.on('disconnect', function() { setSyncState('error'); });
 }
 
-// 保存処理（完全にSocket.io一本化・旧fetch廃止）
 function pushToServer(){
   if(saveTimeout) clearTimeout(saveTimeout);
   setSyncState('syncing');
-  isSaving = true; // 送信ロック
+  isSaving = true;
 
   saveTimeout = setTimeout(function(){
     try {
@@ -626,7 +628,7 @@ function pushToServer(){
       saveLocal();
       
       if (socket && socket.connected) {
-        socket.emit('updateData', state); // サーバーに送信
+        socket.emit('updateData', state);
         setSyncState('ok');
         updateSyncTime();
       } else {
@@ -636,7 +638,7 @@ function pushToServer(){
     } catch(e) {
       setSyncState('error');
     } finally {
-      isSaving = false; // ロック解除
+      isSaving = false;
     }
   }, 100);
 }
@@ -726,7 +728,7 @@ var canvas     = document.getElementById('floorCanvas');
 var canvasWrap = document.getElementById('canvasWrap');
 
 function applyTransform(){
-  // ★変更: 背景固定のため、常に中央に配置（パン移動を無効化）
+  // 背景固定のため、常に中央に配置（パン移動を無効化）
   canvas.style.transform = 'translate(0px, 0px) scale('+curScale+')';
   canvas.style.transformOrigin = 'center center';
 }
@@ -740,7 +742,7 @@ function fitCanvas(){
   applyTransform();
 }
 
-/* ★変更: ドラッグで画面が動かないようにピンチ操作のみに制限 */
+/* ドラッグで画面が動かないようにピンチ操作のみに制限 */
 (function(){
   var ptrMap=new Map(), initDist=0, initScale=1;
   canvasWrap.addEventListener('pointerdown', function(e){
@@ -788,7 +790,7 @@ function renderAll(){
     canvas.appendChild(makeItemEl(it));
   });
 
-  /* dock connectors (★変更: 線のコネクターに復旧) */
+  /* dock connectors (線のコネクターに復旧) */
   for(var i=0;i<seats.length;i++){
     for(var j=i+1;j<seats.length;j++){
       var badge = calcDock(seats[i],seats[j]);
@@ -847,7 +849,7 @@ function makeItemEl(it){
   return el;
 }
 
-// ★変更: ドッキングの線をしっかり表示する判定に復元
+// ドッキングの線をしっかり表示する判定に復元
 function calcDock(a,b){
   var T=2;
   if(Math.abs(a.x-b.x)<T&&Math.abs(a.w-b.w)<T&&Math.abs(a.y+a.h-b.y)<T)
@@ -952,7 +954,7 @@ function setupItemInteraction(el, id){
 /* ═══════════════════════════════════════
    SEAT TOGGLE (simple cycle)
 ═══════════════════════════════════════ */
-// ★変更: タップ時のサイクルを「空席(無) → 使用中(緑) → まもなく空き(オレンジ) → 予約(青) → 空席(無)」に変更
+// 予約の順番をオレンジの次に変更 (空き→使用中→まもなく空き→予約→空き)
 var STATUS_CYCLE = {'':'occupied','occupied':'waiting','waiting':'reserved','reserved':''};
 
 function toggleSeatSimple(id){
@@ -1042,28 +1044,49 @@ function setSelection(ids){
 
 function updateSidebarForSelection(){
   if(isPublic) return;
-  document.getElementById('selCount').textContent=selectedIds.length;
+  
+  var selCount = document.getElementById('selCount');
+  if(selCount) selCount.textContent=selectedIds.length;
+  
   var gp=document.getElementById('groupPanel');
-  gp.style.display=selectedIds.length>1&&isEditMode?'block':'none';
+  if(gp) gp.style.display=selectedIds.length>1&&isEditMode?'block':'none';
 
   if(isEditMode){
     var ep=document.getElementById('editPanel');
     var one=selectedIds.length===1;
-    ep.style.display=one?'block':'none';
+    if(ep) ep.style.display=one?'block':'none';
     if(one){
       var it=curItems()[selectedIds[0]]; if(!it) return;
-      document.getElementById('propName').value=it.name||'';
-      document.getElementById('propMemo').value=it.memo||'';
-      document.getElementById('propWarning').value=it.warningTime||20;
-      document.getElementById('propGuest').value=it.guestName||'';
-      document.getElementById('propCount').value=it.guestCount||'';
-      document.getElementById('propGuestArea').style.display=it.type==='seat'?'block':'none';
+      var propName = document.getElementById('propName');
+      if(propName) propName.value=it.name||'';
+      
+      var propGuestArea = document.getElementById('propGuestArea');
+      if(propGuestArea) propGuestArea.style.display=it.type==='seat'?'block':'none';
+      
+      var propMemo = document.getElementById('propMemo');
+      if(propMemo) propMemo.value=it.memo||'';
+      
+      var propWarning = document.getElementById('propWarning');
+      if(propWarning) propWarning.value=it.warningTime||20;
+      
+      var propGuest = document.getElementById('propGuest');
+      if(propGuest) propGuest.value=it.guestName||'';
+      
+      var propCount = document.getElementById('propCount');
+      if(propCount) propCount.value=it.guestCount||'';
+      
       renderColorSwatches(it.color||'');
     }
   }
 
   if(selectedIds.length>0 && window.innerWidth<=700)
     document.getElementById('sidebar').classList.add('open');
+
+  /* ★追加: 管理モードでもヘッダーのドッキング・解除ボタンを表示 */
+  var hdb = document.getElementById('headDockBtn');
+  var hub = document.getElementById('headUndockBtn');
+  if(hdb) hdb.style.display = selectedIds.length > 1 ? 'inline-block' : 'none';
+  if(hub) hub.style.display = selectedIds.length > 0 ? 'inline-block' : 'none';
 }
 
 /* ═══════════════════════════════════════
@@ -1121,7 +1144,9 @@ function renderColorSwatches(current){
       if(!(it.x+it.w<l||it.x>rr||it.y+it.h<t||it.y>b)) ids.push(it.id);
     });
     selBox.style.display='none';
-    if(ids.length>0) setSelection(ids);
+    
+    // ★追加: 何もないところをクリック/ドラッグすると確実に選択解除(idsが空になる)ように修正
+    setSelection(ids);
   });
 })();
 
@@ -1187,6 +1212,7 @@ document.getElementById('saveHomeBtn').onclick = function(){
   pushHistory(); pushToServer(); toast('ホーム位置を保存しました ✓');
 };
 
+// 配置リセット（管理モードでも常に押せる）
 document.getElementById('resetBtn').onclick = function(){
   if(!confirm('全ての席を元の定位置に戻しますか？')) return;
   Object.values(curItems()).forEach(function(it){
@@ -1243,7 +1269,10 @@ document.getElementById('delBtn').onclick = function(){
 document.getElementById('undoBtn').onclick = undo;
 document.getElementById('redoBtn').onclick = redo;
 
-document.getElementById('dockBtn').onclick = function(){
+/* ═══════════════════════════════════════
+   ドッキング / 解除処理
+═══════════════════════════════════════ */
+function executeDock() {
   var seats=selectedIds.map(function(id){ return curItems()[id]; }).filter(function(it){ return it&&it.type==='seat'; });
   if(seats.length<2){ toast('2つ以上の席を選択してください'); return; }
   var minX=Math.min.apply(null,seats.map(function(s){ return s.x; }));
@@ -1260,16 +1289,23 @@ document.getElementById('dockBtn').onclick = function(){
     for(var i=1;i<seats.length;i++){ seats[i].y=ny; seats[i].x=seats[0].x; ny+=seats[i].h; }
   }
   pushHistory(); setSelection([]); pushToServer(); toast('席をドッキングしました ✓');
-};
+}
 
-document.getElementById('undockBtn').onclick = function(){
+function executeUndock() {
   selectedIds.forEach(function(id){
     var it=curItems()[id];
     if(it&&it.homeX!==undefined){ it.x=it.homeX; it.y=it.homeY; }
   });
   pushHistory(); setSelection([]); pushToServer(); toast('ホーム位置に戻しました');
-};
+}
 
+// 編集サイドバー用とヘッダー用、両方のボタンに同じ処理を割り当て
+if(document.getElementById('dockBtn')) document.getElementById('dockBtn').onclick = executeDock;
+if(document.getElementById('headDockBtn')) document.getElementById('headDockBtn').onclick = executeDock;
+if(document.getElementById('undockBtn')) document.getElementById('undockBtn').onclick = executeUndock;
+if(document.getElementById('headUndockBtn')) document.getElementById('headUndockBtn').onclick = executeUndock;
+
+/* 管理ボタン */
 document.getElementById('clearAllBtn').onclick = function(){
   if(!confirm('全席を空席リセットしますか？')) return;
   Object.values(curItems()).forEach(function(it){
