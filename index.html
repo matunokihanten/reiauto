@@ -263,7 +263,6 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
 </head>
 <body class="manage-mode">
 
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ HEADER ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <header id="header">
   <div class="app-title" id="mainTitle">🍽 MATSUNOKI PRO</div>
   <div class="sync-dot" id="syncDot" title="同期状態"></div>
@@ -293,7 +292,6 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
   <button class="hbtn" id="sbToggleBtn" style="display:none">☰</button>
 </header>
 
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ MAIN ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <div id="main">
   <div id="canvasWrap">
     <div id="floorCanvas">
@@ -301,14 +299,12 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
       <div id="gH" class="guide"></div>
       <div id="selBox"></div>
     </div>
-    <!-- 公開モード: 凡例 -->
     <div id="pubLegend">
       <div class="leg-item"><div class="leg-dot" style="background:var(--c-seat);border:1px solid #aaa;"></div>空席</div>
       <div class="leg-item"><div class="leg-dot" style="background:var(--c-occupied);"></div>使用中</div>
       <div class="leg-item"><div class="leg-dot" style="background:var(--c-waiting);"></div>まもなく空き</div>
       <div class="leg-item"><div class="leg-dot" style="background:var(--c-reserved);"></div>予約済</div>
     </div>
-    <!-- 公開モード: 統計 -->
     <div id="pubStats">
       <div class="pub-stat-grid">
         <div class="pub-stat-item">
@@ -331,9 +327,7 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
     </div>
   </div>
 
-  <!-- ━━━━━━━━━━━━━━━━ SIDEBAR ━━━━━━━━━━━━━━━━ -->
   <aside id="sidebar">
-    <!-- 編集: パーツ編集 -->
     <div class="sb-section edit-only" id="editPanel" style="display:none">
       <div class="sb-title">パーツ編集</div>
       <label class="form-label">ラベル / 席番号</label>
@@ -357,20 +351,17 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
       <button class="sb-btn red" id="delBtn" style="margin-top:4px;">🗑 削除</button>
     </div>
 
-    <!-- 編集: 一括操作 -->
     <div class="sb-section edit-only" id="groupPanel" style="display:none">
       <div class="sb-title">一括操作 (<span id="selCount">0</span>席選択)</div>
       <button class="sb-btn blue" id="dockBtn">⛓ ドッキング配置</button>
       <button class="sb-btn" id="undockBtn">🔓 ホームへ戻す</button>
     </div>
 
-    <!-- 編集: フロア名 -->
     <div class="sb-section edit-only" id="floorNameSection">
       <div class="sb-title">現在のフロア名</div>
       <input class="form-input" id="floorNameInput" type="text" placeholder="1階">
     </div>
 
-    <!-- 管理: クイック操作 -->
     <div class="sb-section manage-only" id="managePanel">
       <div class="sb-title">クイック操作</div>
       <button class="sb-btn green" id="clearAllBtn">🗑 全席 空席リセット</button>
@@ -381,7 +372,6 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
       <button class="sb-btn" id="pubLinkBtn">🔗 公開ページを開く</button>
     </div>
 
-    <!-- 管理: 操作ガイド -->
     <div class="sb-section manage-only">
       <div class="sb-title">操作ガイド</div>
       <div style="font-size:12px;line-height:2;color:var(--c-muted);">
@@ -401,9 +391,6 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
   </aside>
 </div>
 
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ MODALS ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
-
-<!-- 席詳細モーダル -->
 <div class="modal-overlay" id="seatModal">
   <div class="modal-box">
     <div class="modal-title">🪑 <span id="seatModalTitle">席の操作</span></div>
@@ -440,7 +427,6 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
   </div>
 </div>
 
-<!-- アイコン選択モーダル -->
 <div class="modal-overlay" id="iconModal">
   <div class="modal-box">
     <div class="modal-title">🎨 アイコン追加</div>
@@ -451,7 +437,6 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
   </div>
 </div>
 
-<!-- データ読み込みモーダル -->
 <div class="modal-overlay" id="importModal">
   <div class="modal-box">
     <div class="modal-title">📤 データ読み込み</div>
@@ -466,9 +451,6 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
 
 <div id="toast"></div>
 
-<!-- ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-     APPLICATION SCRIPT
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ -->
 <script>
 (function(){
 'use strict';
@@ -583,7 +565,7 @@ function setBodyMode(mode){
 }
 
 /* ═══════════════════════════════════════
-   SYNC / SERVER
+   SYNC / SERVER (MODIFIED FOR layout.json & save.php)
 ═══════════════════════════════════════ */
 var syncDot   = document.getElementById('syncDot');
 var syncLabel = document.getElementById('syncLabel');
@@ -596,13 +578,12 @@ function setSyncState(s){
 async function loadFromServer(){
   try{
     setSyncState('syncing');
-    var r = await fetch('/api/state');
+    var r = await fetch('layout.json?t=' + Date.now());
     if(!r.ok) throw new Error(r.status);
     var data = await r.json();
     if(data.lastUpdate && data.lastUpdate > lastServerTs){
       lastServerTs = data.lastUpdate;
       if(data.floors){
-        // 自分よりサーバーが新しければマージ
         if(data.lastUpdate >= (state.lastUpdate||0) - 1500){
           state.floors = data.floors;
           if(data.currentFloor && state.floors[data.currentFloor])
@@ -625,14 +606,16 @@ async function pushToServer(){
     setSyncState('syncing');
     state.lastUpdate = Date.now();
     saveLocal();
-    var r = await fetch('/api/state',{
+    var r = await fetch('save.php',{
       method:'POST',
       headers:{'Content-Type':'application/json'},
       body:JSON.stringify(state)
     });
     if(!r.ok) throw new Error(r.status);
-    var res = await r.json();
-    if(res.lastUpdate){ state.lastUpdate=res.lastUpdate; lastServerTs=res.lastUpdate; }
+    var resText = await r.text();
+    if(resText === "success"){
+      lastServerTs = state.lastUpdate;
+    }
     setSyncState('ok');
     updateSyncTime();
   }catch(e){
