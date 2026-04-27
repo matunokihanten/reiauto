@@ -79,6 +79,12 @@ body.manage-mode #sidebar{display:none!important;}
 body.public-mode #sidebar{display:none!important;}
 body.public-mode .edit-only{display:none!important;}
 body.public-mode #resetBtn{display:none!important;}
+/* 公開モードで不要なボタンを完全に隠す */
+body.public-mode #modeBtn,
+body.public-mode #headDockBtn,
+body.public-mode #headUndockBtn,
+body.public-mode #sbToggleBtn { display:none!important; }
+
 body.manage-mode .edit-only{display:none!important;}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -596,7 +602,6 @@ function initSocket() {
   socket.on('dataChanged', function(newData) {
     if (isSaving || selectedIds.length > 0 || isEditMode) return;
 
-    // 【重要: オートリカバリー】サーバーのスリープ復帰対策
     if (!isPublic) {
       try {
         var ls = localStorage.getItem(LS_KEY);
@@ -604,7 +609,6 @@ function initSocket() {
           var localData = JSON.parse(ls);
           var serverTime = newData.lastUpdate || 0;
           var localTime = localData.lastUpdate || 0;
-          // サーバーデータよりローカルが5秒以上新しければ復旧して上書き阻止
           if (localTime > serverTime + 5000) {
             state = localData;
             pushToServer(); 
@@ -1132,6 +1136,7 @@ function renderColorSwatches(current){
   var selBox=document.getElementById('selBox');
   var active=false, bx,by;
   canvasWrap.addEventListener('pointerdown', function(e){
+    if(isPublic) return; // 公開モードでは範囲選択をブロック
     if(e.target!==canvasWrap&&e.target!==canvas) return;
     var r=canvas.getBoundingClientRect();
     bx=(e.clientX-r.left)/curScale; by=(e.clientY-r.top)/curScale;
@@ -1206,6 +1211,7 @@ function addItem(type,name,w,h,icon){
    TOOLBAR EVENTS
 ═══════════════════════════════════════ */
 document.getElementById('modeBtn').onclick = function(){
+  if(isPublic) return; // 公開モードでは無効化
   isEditMode = !isEditMode;
   selectedIds=[];
   setBodyMode(isEditMode?'edit':'manage');
