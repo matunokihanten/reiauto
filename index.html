@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0,user-scalable=no,maximum-scale=1.0"/>
-<title>レイアウト</title>
+<title>松乃木飯店 Pro Ultimate</title>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"/>
 <script src="/socket.io/socket.io.js"></script>
 <style>
@@ -78,6 +78,7 @@ body.manage-mode #sidebar{display:none!important;}
 
 body.public-mode #sidebar{display:none!important;}
 body.public-mode .edit-only{display:none!important;}
+body.public-mode #resetBtn{display:none!important;}
 body.manage-mode .edit-only{display:none!important;}
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -286,7 +287,7 @@ body.dark .st-btn{background:#334155;color:#e2e8f0;}
 
   <button class="hbtn" id="themeBtn" title="ダーク/ライト切替">🌙</button>
   <button class="hbtn" id="fsBtn" title="全画面">⛶</button>
-  <button class="hbtn edit-only" id="resetBtn">🏠 配置リセット</button>
+  <button class="hbtn" id="resetBtn">🏠 配置リセット</button>
   
   <button class="hbtn primary" id="headDockBtn" style="display:none;">⛓ 連結</button>
   <button class="hbtn" id="headUndockBtn" style="display:none;">🔓 解除</button>
