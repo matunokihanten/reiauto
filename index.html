@@ -912,7 +912,7 @@ function calcDock(a,b){
    ITEM INTERACTION
 ═══════════════════════════════════════ */
 function setupItemInteraction(el, id){
-  var isDrag=false, isResize=false, sx,sy, startPos=new Map(), moved=false, lpTimer;
+  var isDrag=false, isResize=false, sx,sy, startPos=new Map(), moved=false;
 
   function getIt(){ return curItems()[id]; }
 
@@ -924,29 +924,31 @@ function setupItemInteraction(el, id){
 
     if(isEditMode && selectedIds.indexOf(id)<0) setSelection([id]);
 
-    if(e.target.classList.contains('resizer') && isEditMode) isResize=true;
-    else isDrag=true;
+    // ★修正: 管理モードでのドラッグ・移動・選択アニメーションを無効化
+    if(isEditMode){
+      if(e.target.classList.contains('resizer')) isResize=true;
+      else isDrag=true;
 
-    var targets = (isEditMode && selectedIds.length>1) ? selectedIds : [id];
-    targets.forEach(function(sid){
-      var sit=curItems()[sid]; if(!sit) return;
-      startPos.set(sid,{x:sit.x,y:sit.y,w:sit.w,h:sit.h});
-      var sel=document.getElementById(sid);
-      if(sel) sel.classList.add('item-dragging');
-    });
+      var targets = (selectedIds.length>1) ? selectedIds : [id];
+      targets.forEach(function(sid){
+        var sit=curItems()[sid]; if(!sit) return;
+        startPos.set(sid,{x:sit.x,y:sit.y,w:sit.w,h:sit.h});
+        var sel=document.getElementById(sid);
+        if(sel) sel.classList.add('item-dragging');
+      });
+    } else {
+      isDrag=false;
+      isResize=false;
+    }
 
     el.setPointerCapture(e.pointerId);
     el.addEventListener('pointermove', onMove);
     el.addEventListener('pointerup', onUp);
-
-    if(!isEditMode && it.type==='seat'){
-      lpTimer=setTimeout(function(){ moved=false; openSeatModal(id); }, 380);
-    }
   });
 
   function onMove(e){
     var dx=(e.clientX-sx)/curScale, dy=(e.clientY-sy)/curScale;
-    if(Math.abs(dx)>3||Math.abs(dy)>3){ moved=true; clearTimeout(lpTimer); }
+    if(Math.abs(dx)>3||Math.abs(dy)>3){ moved=true; }
     var it=getIt(); if(!it) return;
 
     if(isResize){
@@ -971,7 +973,7 @@ function setupItemInteraction(el, id){
   }
 
   function onUp(e){
-    isDrag=isResize=false; clearTimeout(lpTimer);
+    isDrag=isResize=false;
     var gV=document.getElementById('gV'), gH=document.getElementById('gH');
     gV.style.display=gH.style.display='none';
     document.querySelectorAll('.item-dragging').forEach(function(t){ t.classList.remove('item-dragging'); });
@@ -991,8 +993,7 @@ function setupItemInteraction(el, id){
 
   el.addEventListener('contextmenu', function(e){
     e.preventDefault();
-    var it=getIt();
-    if(!isEditMode && it && it.type==='seat') openSeatModal(id);
+    // ★修正: 管理モードでの右クリック機能を削除
   });
 }
 
